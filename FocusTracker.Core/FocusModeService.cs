@@ -14,17 +14,24 @@ namespace FocusTracker.Core
 
         public void Start(TimeSpan duration)
         {
+            Console.WriteLine("FocusModeService.Start called");
+
             IsActive = true;
             EndsAt = DateTime.UtcNow.Add(duration);
+
             FocusStartedWithDuration?.Invoke(duration);
         }
 
         public void Stop(bool completed = false)
         {
+            Console.WriteLine("FocusModeService.Stop called");
+
             IsActive = false;
             EndsAt = null;
+
             FocusEndedWithResult?.Invoke(completed);
         }
+
 
         public void Tick()
         {

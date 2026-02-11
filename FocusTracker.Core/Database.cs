@@ -45,13 +45,21 @@ namespace FocusTracker.Core
             var cmd = connection.CreateCommand();
             cmd.CommandText =
             """
-            CREATE TABLE IF NOT EXISTS focus_sessions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                start_time TEXT NOT NULL,
-                planned_minutes INTEGER NOT NULL,
-                completed INTEGER NOT NULL
-            );
-            """;
+    CREATE TABLE IF NOT EXISTS focus_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        start_time TEXT NOT NULL,
+        end_time TEXT,
+
+        planned_minutes INTEGER NOT NULL,
+        actual_minutes REAL,
+
+        completed INTEGER NOT NULL,
+
+        idle_seconds INTEGER NOT NULL DEFAULT 0,
+        interrupt_count INTEGER NOT NULL DEFAULT 0
+    );
+    """;
 
             cmd.ExecuteNonQuery();
         }

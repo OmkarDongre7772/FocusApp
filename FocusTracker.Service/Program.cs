@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.Extensions.Logging;
 
 namespace FocusTracker.Service;
@@ -10,16 +11,12 @@ public class Program
     {
         var builder = Host.CreateApplicationBuilder(args);
 
-        // Detect if running as Windows Service
-        if (!Environment.UserInteractive)
+        // Always support both modes
+        builder.Services.AddWindowsService(options =>
         {
-            builder.Services.AddWindowsService(options =>
-            {
-                options.ServiceName = "FocusTrackerService";
-            });
-        }
+            options.ServiceName = "FocusTrackerService";
+        });
 
-        // Logging configuration
         builder.Logging.ClearProviders();
         builder.Logging.AddConsole();
 

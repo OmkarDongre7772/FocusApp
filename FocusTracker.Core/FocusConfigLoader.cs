@@ -9,6 +9,9 @@ namespace FocusTracker.Core
     {
         public static FocusConfig Load()
         {
+            //Debug
+            Console.WriteLine("FocusConfigLoader.Load() called from: " + AppDomain.CurrentDomain.FriendlyName);
+
             var basePath = AppContext.BaseDirectory;
             var fullPath = Path.Combine(basePath, "focus-config.json");
 
