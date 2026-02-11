@@ -1,3 +1,4 @@
+using FocusTracker.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Hosting.WindowsServices;
@@ -22,7 +23,11 @@ public class Program
 
         builder.Services.AddHostedService<Worker>();
 
+        builder.Services.Configure<FragmentationConfig>(
+        builder.Configuration.GetSection("Fragmentation"));
+
         var host = builder.Build();
         host.Run();
+
     }
 }

@@ -10,9 +10,9 @@ namespace FocusTracker.Core
         private static string ConnectionString => $"Data Source={DatabasePaths.GetDatabasePath()};Cache=Shared";
 
         private static readonly TimeSpan MinObservation = TimeSpan.FromMinutes(10);
-        private static readonly TimeSpan PostIdleIgnore = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan PostIdleIgnore = TimeSpan.FromSeconds(4);
 
-        private const int ExpectedSwitchesPerHour = 20;
+        private const int ExpectedSwitchesPerHour = 2;
 
         private readonly FocusConfig _config;
 

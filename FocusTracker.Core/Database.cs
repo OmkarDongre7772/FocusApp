@@ -6,8 +6,7 @@ namespace FocusTracker.Core
     public class Database
     {
         private static string ConnectionString =>
-    $"Data Source={DatabasePaths.GetDatabasePath()};Cache=Shared";
-
+            $"Data Source={DatabasePaths.GetDatabasePath()};Cache=Shared";
 
         public Database()
         {
@@ -18,11 +17,9 @@ namespace FocusTracker.Core
             CreateSettingsTable(connection);
             CreateDailySummaryTable(connection);
             CreateFocusSessionsTable(connection);
+
             Console.WriteLine("Database constructor executed.");
-
         }
-
-        // ===== SCHEMA =====
 
         private static void CreateEventsTable(SqliteConnection connection)
         {
@@ -45,21 +42,23 @@ namespace FocusTracker.Core
             var cmd = connection.CreateCommand();
             cmd.CommandText =
             """
-    CREATE TABLE IF NOT EXISTS focus_sessions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+            CREATE TABLE IF NOT EXISTS focus_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-        start_time TEXT NOT NULL,
-        end_time TEXT,
+                start_time TEXT NOT NULL,
+                end_time TEXT,
 
-        planned_minutes INTEGER NOT NULL,
-        actual_minutes REAL,
+                planned_minutes INTEGER NOT NULL,
+                actual_minutes REAL,
 
-        completed INTEGER NOT NULL,
+                completed INTEGER NOT NULL,
 
-        idle_seconds INTEGER NOT NULL DEFAULT 0,
-        interrupt_count INTEGER NOT NULL DEFAULT 0
-    );
-    """;
+                idle_seconds INTEGER NOT NULL DEFAULT 0,
+                interrupt_count INTEGER NOT NULL DEFAULT 0,
+
+                fragmentation_score INTEGER NOT NULL DEFAULT 0
+            );
+            """;
 
             cmd.ExecuteNonQuery();
         }
@@ -93,8 +92,6 @@ namespace FocusTracker.Core
 
             cmd.ExecuteNonQuery();
         }
-
-        // ===== EVENTS =====
 
         public void SaveEvent(string type, string? data)
         {

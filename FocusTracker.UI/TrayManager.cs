@@ -32,6 +32,9 @@ namespace FocusTracker.UI
             menu.Items.Add("Settings", null, (s, e) => onSettings());
             menu.Items.Add(new ToolStripSeparator());
 
+            menu.Items.Add("Start Focus (1 min)", null,
+    (s, e) => onFocusStart(TimeSpan.FromMinutes(1)));
+
             menu.Items.Add("Start Focus (25 min)", null,
     (s, e) => onFocusStart(TimeSpan.FromMinutes(25)));
 

@@ -11,74 +11,41 @@ namespace FocusTracker.Core
 
         public TodaySummary GetTodaySummary()
         {
-            var events = LoadTodayEvents();
+            using var connection = new SqliteConnection(ConnectionString);
+            connection.Open();
 
-            TimeSpan totalFocusTime = TimeSpan.Zero;
-            TimeSpan longestFocus = TimeSpan.Zero;
-            int focusSessions = 0;
+            var cmd = connection.CreateCommand();
+            cmd.CommandText =
+            """
+    SELECT actual_minutes
+    FROM focus_sessions
+    WHERE completed = 1
+      AND date(start_time, 'localtime') = date('now','localtime');
+    """;
 
-            DateTime? sessionStart = null;
-            bool inFocus = false;
+            using var reader = cmd.ExecuteReader();
 
-            foreach (var e in events)
+            double total = 0;
+            double longest = 0;
+            int count = 0;
+
+            while (reader.Read())
             {
-                if (e.Type == "APP_CHANGED")
-                {
-                    if (!inFocus)
-                    {
-                        // start focus
-                        sessionStart = e.Time;
-                        inFocus = true;
-                    }
-                    else
-                    {
-                        // app changed while focusing → end previous session
-                        EndSession(e.Time);
-                        sessionStart = e.Time;
-                        inFocus = true;
-                    }
-                }
+                var minutes = reader.GetDouble(0);
 
-                if (e.Type == "IDLE_STARTED")
-                {
-                    if (inFocus)
-                    {
-                        EndSession(e.Time);
-                        inFocus = false;
-                        sessionStart = null;
-                    }
-                }
-            }
+                total += minutes;
+                count++;
 
-            // end session at "now" if still focusing
-            if (inFocus && sessionStart != null)
-            {
-                EndSession(DateTime.UtcNow);
+                if (minutes > longest)
+                    longest = minutes;
             }
 
             return new TodaySummary
             {
-                FocusSessions = focusSessions,
-                FocusMinutes = totalFocusTime.TotalMinutes,
-                LongestFocusMinutes = longestFocus.TotalMinutes
+                FocusSessions = count,
+                FocusMinutes = total,
+                LongestFocusMinutes = longest
             };
-
-            // 🔒 local helper
-            void EndSession(DateTime endTime)
-            {
-                if (sessionStart == null) return;
-
-                var duration = endTime - sessionStart.Value;
-
-                if (duration >= MinFocusDuration)
-                {
-                    focusSessions++;
-                    totalFocusTime += duration;
-
-                    if (duration > longestFocus)
-                        longestFocus = duration;
-                }
-            }
         }
 
         private List<EventRow> LoadTodayEvents()

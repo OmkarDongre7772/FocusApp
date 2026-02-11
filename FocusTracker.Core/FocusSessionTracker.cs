@@ -15,6 +15,13 @@ namespace FocusTracker.Core
         private int _idleSeconds;
         private int _interruptCount;
 
+        private readonly FragmentationConfig _config;
+
+        public FocusSessionTracker(FragmentationConfig config)
+        {
+            _config = config;
+        }
+
         public void OnFocusStarted(TimeSpan duration)
         {
             _currentStart = DateTime.UtcNow;
@@ -48,6 +55,8 @@ namespace FocusTracker.Core
             var endTime = DateTime.UtcNow;
             var actualMinutes = (endTime - _currentStart.Value).TotalMinutes;
 
+            var fragmentationScore = CalculateFragmentationScore(completed);
+
             using var conn = new SqliteConnection(ConnectionString);
             conn.Open();
 
@@ -59,7 +68,8 @@ namespace FocusTracker.Core
                 actual_minutes = $actual,
                 completed = $completed,
                 idle_seconds = $idle,
-                interrupt_count = $interrupts
+                interrupt_count = $interrupts,
+                fragmentation_score = $score
             WHERE id = $id;
             """;
 
@@ -68,6 +78,7 @@ namespace FocusTracker.Core
             cmd.Parameters.AddWithValue("$completed", completed ? 1 : 0);
             cmd.Parameters.AddWithValue("$idle", _idleSeconds);
             cmd.Parameters.AddWithValue("$interrupts", _interruptCount);
+            cmd.Parameters.AddWithValue("$score", fragmentationScore);
             cmd.Parameters.AddWithValue("$id", _currentSessionId);
 
             cmd.ExecuteNonQuery();
@@ -76,7 +87,24 @@ namespace FocusTracker.Core
             _currentStart = null;
         }
 
-        // Phase 5 will use these
+        private int CalculateFragmentationScore(bool completed)
+        {
+            double idleRatio = Math.Min(1.0,
+                (double)_idleSeconds / _config.MaxIdleThresholdSeconds);
+
+            double interruptRatio = Math.Min(1.0,
+                (double)_interruptCount / _config.MaxInterruptThreshold);
+
+            double earlyStopPenalty = completed ? 0 : 1;
+
+            double score =
+                (idleRatio * _config.IdleWeight) +
+                (interruptRatio * _config.InterruptWeight) +
+                (earlyStopPenalty * _config.EarlyStopWeight);
+
+            return (int)Math.Round(Math.Clamp(score * 100, 0, 100));
+        }
+
         public void AddIdleSeconds(int seconds)
         {
             _idleSeconds += seconds;
