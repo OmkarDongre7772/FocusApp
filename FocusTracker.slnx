@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="FocusTracker.Core/FocusTracker.Core.csproj" />
+  <Project Path="FocusTracker.Service/FocusTracker.Service.csproj" />
+  <Project Path="FocusTracker.UI/FocusTracker.UI.csproj" />
+</Solution>

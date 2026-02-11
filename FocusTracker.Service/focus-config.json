@@ -1,0 +1,29 @@
+{
+    "focusApps": [
+        "devenv",
+        "code",
+        "idea64",
+        "pycharm64",
+        "studio64",
+        "cmd",
+        "powershell",
+        "wt",
+        "chrome",
+        "msedge",
+        "firefox",
+        "brave",
+        "notepad++",
+        "obsidian",
+        "sumatrapdf"
+    ],
+    "focusPairs": [
+        [ "devenv", "chrome" ],
+        [ "devenv", "msedge" ],
+        [ "code", "chrome" ],
+        [ "code", "msedge" ],
+        [ "code", "firefox" ],
+        [ "code", "wt" ],
+        [ "idea64", "chrome" ],
+        [ "idea64", "msedge" ]
+    ]
+}

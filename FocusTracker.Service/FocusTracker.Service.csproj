@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+	  <TargetFramework>net8.0-windows</TargetFramework>
+	  <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-FocusTracker.Service-00a2e2b5-965b-49b8-872c-bd35308b4216</UserSecretsId>
+  <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+    <ProjectReference Include="..\FocusTracker.Core\FocusTracker.Core.csproj" />
+  </ItemGroup>
+</Project>
