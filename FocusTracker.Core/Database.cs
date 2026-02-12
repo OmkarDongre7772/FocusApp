@@ -15,8 +15,10 @@ namespace FocusTracker.Core
 
             CreateEventsTable(connection);
             CreateSettingsTable(connection);
-            CreateDailySummaryTable(connection);
+            CreateDailyLocalAggregatesTable(connection);
             CreateFocusSessionsTable(connection);
+            CreateLocalUserTable(connection);
+
 
             Console.WriteLine("Database constructor executed.");
         }
@@ -77,21 +79,63 @@ namespace FocusTracker.Core
             cmd.ExecuteNonQuery();
         }
 
-        private static void CreateDailySummaryTable(SqliteConnection connection)
+        private static void CreateDailyLocalAggregatesTable(SqliteConnection connection)
         {
             var cmd = connection.CreateCommand();
             cmd.CommandText =
             """
-            CREATE TABLE IF NOT EXISTS daily_summary (
-                date TEXT PRIMARY KEY,
-                focus_minutes REAL NOT NULL,
-                focus_sessions INTEGER NOT NULL,
-                fragmentation_score INTEGER NOT NULL
-            );
-            """;
+    CREATE TABLE IF NOT EXISTS daily_local_aggregates (
+        date TEXT PRIMARY KEY,
+
+        total_focused_seconds INTEGER NOT NULL,
+        longest_focus_seconds INTEGER NOT NULL,
+
+        fragmentation_score INTEGER NOT NULL,
+        focus_percentage REAL NOT NULL,
+
+        sync_status TEXT NOT NULL DEFAULT 'PENDING',
+        computed_at TEXT NOT NULL
+    );
+    """;
 
             cmd.ExecuteNonQuery();
         }
+
+        private static void CreateLocalUserTable(SqliteConnection connection)
+        {
+            var cmd = connection.CreateCommand();
+
+            // 1️⃣ Create base table if not exists
+            cmd.CommandText =
+            """
+    CREATE TABLE IF NOT EXISTS local_user (
+        user_id TEXT,
+        username TEXT,
+        team_id TEXT,
+        access_token TEXT,
+        refresh_token TEXT,
+        token_expiry_utc TEXT,
+        tracking_enabled INTEGER NOT NULL DEFAULT 1,
+        last_login TEXT,
+        updated_at TEXT NOT NULL
+    );
+    """;
+
+            cmd.ExecuteNonQuery();
+
+            // 2️⃣ Ensure single row exists
+            cmd.CommandText =
+            """
+    INSERT INTO local_user (tracking_enabled, updated_at)
+    SELECT 1, $now
+    WHERE NOT EXISTS (SELECT 1 FROM local_user);
+    """;
+
+            cmd.Parameters.Clear();
+            cmd.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+            cmd.ExecuteNonQuery();
+        }
+
 
         public void SaveEvent(string type, string? data)
         {

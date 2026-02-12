@@ -1,4 +1,5 @@
 ﻿using FocusTracker.Core;
+using System.Diagnostics;
 using System.IO.Pipes;
 using System.Text;
 using System.Text.Json;
@@ -11,14 +12,18 @@ public class IpcServer
 
     private readonly FocusModeService _focusMode;
     private readonly NotificationPolicy _notificationPolicy;
+    private readonly SupabaseOptions _supabaseOptions;
 
     public IpcServer(
         FocusModeService focusMode,
-        NotificationPolicy notificationPolicy)
+        NotificationPolicy notificationPolicy,
+        SupabaseOptions supabaseOptions)
     {
         _focusMode = focusMode;
         _notificationPolicy = notificationPolicy;
+        _supabaseOptions = supabaseOptions;
     }
+
 
     public Task StartAsync(CancellationToken token)
     {
@@ -76,7 +81,7 @@ public class IpcServer
                 var request = JsonSerializer.Deserialize<IpcRequest>(requestJson);
 
                 System.Diagnostics.Debug.WriteLine("Handling request...");
-                var response = HandleRequest(request);
+                var response = await HandleRequest(request);
 
                 System.Diagnostics.Debug.WriteLine("Serializing response...");
                 var responseJson = JsonSerializer.Serialize(response);
@@ -110,10 +115,12 @@ public class IpcServer
 
 
 
-    private IpcResponse HandleRequest(IpcRequest? request)
+    private async Task<IpcResponse> HandleRequest(IpcRequest? request)
     {
         if (request == null)
             return new IpcResponse { Success = false, Message = "Invalid request" };
+
+        var repo = new LocalUserRepository();
 
         switch (request.Command)
         {
@@ -123,46 +130,123 @@ public class IpcServer
 
                 _focusMode.Start(TimeSpan.FromMinutes(request.DurationMinutes.Value));
 
-                return new IpcResponse
-                {
-                    Success = true,
-                    Message = "Focus started",
-                    Status = GetStatus()
-                };
+                return Success("Focus started");
 
             case "StopFocus":
                 _focusMode.Stop();
+                return Success("Focus stopped");
 
-                return new IpcResponse
-                {
-                    Success = true,
-                    Message = "Focus stopped",
-                    Status = GetStatus()
-                };
+            case "ToggleTracking":
+                if (request.ToggleValue == null)
+                    return Fail("Missing value");
+
+                _focusMode.Stop(false);
+                repo.SetTracking(request.ToggleValue.Value);
+
+                return Success(request.ToggleValue.Value
+                    ? "Tracking enabled"
+                    : "Tracking disabled");
+
+            case "Login":
+                Debug.WriteLine("Server Request =>" + request);
+                if (string.IsNullOrWhiteSpace(request.Username) ||
+                    string.IsNullOrWhiteSpace(request.Password))
+                    return Fail("Email and password required");
+
+                var authClient = new SupabaseAuthClient(
+                    new HttpClient(),
+                    _supabaseOptions);
+
+                var result = await authClient.LoginAsync(
+                    request.Username.Trim(),
+                    request.Password.Trim());
+                Debug.WriteLine("Server Result =>" + result);
+                if (result == null)
+                    return Fail("Invalid credentials");
+
+                repo.SaveAuth(
+                    result.UserId,
+                    result.UserEmail!,
+                    request.TeamId,
+                    result.AccessToken,
+                    result.RefreshToken,
+                    DateTime.UtcNow.AddSeconds(result.ExpiresIn));
+
+                return Success("Login successful");
+
+            case "Register":
+                Debug.WriteLine("Server Request =>" + request);
+                if (string.IsNullOrWhiteSpace(request.Username) ||
+                    string.IsNullOrWhiteSpace(request.Password))
+                    return Fail("Email and password required");
+
+                var registerClient = new SupabaseAuthClient(
+                    new HttpClient(),
+                    _supabaseOptions);
+
+                var registerResult = await registerClient.RegisterAsync(
+                    request.Username.Trim(),
+                    request.Password.Trim());
+                Debug.WriteLine("Server Result =>" + registerResult);
+                if (registerResult == null)
+                    return Fail("Registration failed");
+
+                // Auto-login immediately
+                repo.SaveAuth(
+                    registerResult.UserId,
+                    registerResult.UserEmail,
+                    request.TeamId,
+                    registerResult.AccessToken,
+                    registerResult.RefreshToken,
+                    DateTime.UtcNow.AddSeconds(registerResult.ExpiresIn));
+
+                return Success("Registration successful");
+
+
+
+            case "Logout":
+                _focusMode.Stop(false);
+                repo.Logout();
+                return Success("Logged out");
 
             case "GetStatus":
-                return new IpcResponse
-                {
-                    Success = true,
-                    Status = GetStatus()
-                };
+                return Success();
 
             default:
-                return new IpcResponse
-                {
-                    Success = false,
-                    Message = "Unknown command"
-                };
+                return Fail("Unknown command");
         }
+
+        IpcResponse Success(string? msg = null)
+            => new IpcResponse
+            {
+                Success = true,
+                Message = msg ?? "",
+                Status = GetStatus()
+            };
+
+        IpcResponse Fail(string msg)
+            => new IpcResponse
+            {
+                Success = false,
+                Message = msg
+            };
     }
 
     private ServiceStatus GetStatus()
     {
+        var repo = new LocalUserRepository();
+        var user = repo.Get();
+
         return new ServiceStatus
         {
             IsFocusActive = _focusMode.IsActive,
             FocusEndsAtUtc = _focusMode.EndsAt,
-            SnoozedUntilUtc = _notificationPolicy.SnoozedUntil
+            SnoozedUntilUtc = _notificationPolicy.SnoozedUntil,
+            TrackingEnabled = user.TrackingEnabled,
+            IsLoggedIn = user.Username != null,
+            Username = user.Username,
+            TeamId = user.TeamId
         };
     }
+
 }

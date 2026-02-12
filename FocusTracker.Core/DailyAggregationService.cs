@@ -39,27 +39,38 @@ namespace FocusTracker.Core
             {
                 var sessions = LoadCompletedSessions(connection, date);
 
-                double totalMinutes = 0;
-                int totalSessions = 0;
+                int totalFocusedSeconds = 0;
+                int longestFocusSeconds = 0;
                 int totalFragmentation = 0;
 
                 foreach (var s in sessions)
                 {
-                    totalMinutes += s.ActualMinutes;
-                    totalSessions++;
+                    int seconds = (int)Math.Round(s.ActualMinutes * 60);
+
+                    totalFocusedSeconds += seconds;
                     totalFragmentation += s.FragmentationScore;
+
+                    if (seconds > longestFocusSeconds)
+                        longestFocusSeconds = seconds;
                 }
 
-                int avgFragmentation =
-                    totalSessions == 0 ? 0 :
-                    (int)Math.Round((double)totalFragmentation / totalSessions);
+                int sessionCount = sessions.Count;
 
-                UpsertDailySummary(
+                int avgFragmentation =
+                    sessionCount == 0 ? 0 :
+                    (int)Math.Round((double)totalFragmentation / sessionCount);
+
+                // Focus % = Focused time / 24h
+                double focusPercentage =
+                    totalFocusedSeconds / (24d * 60d * 60d);
+
+                UpsertAggregate(
                     connection,
                     date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                    totalMinutes,
-                    totalSessions,
-                    avgFragmentation
+                    totalFocusedSeconds,
+                    longestFocusSeconds,
+                    avgFragmentation,
+                    focusPercentage
                 );
 
                 transaction.Commit();
@@ -86,12 +97,12 @@ namespace FocusTracker.Core
             SELECT actual_minutes, fragmentation_score
             FROM focus_sessions
             WHERE completed = 1
-              AND datetime(start_time, 'localtime') >= $start
-              AND datetime(start_time, 'localtime') < $end;
+              AND datetime(start_time) >= $startUtc
+              AND datetime(start_time) < $endUtc;
             """;
 
-            cmd.Parameters.AddWithValue("$start", start.ToString("yyyy-MM-dd HH:mm:ss"));
-            cmd.Parameters.AddWithValue("$end", end.ToString("yyyy-MM-dd HH:mm:ss"));
+            cmd.Parameters.AddWithValue("$startUtc", start.ToUniversalTime().ToString("O"));
+            cmd.Parameters.AddWithValue("$endUtc", end.ToUniversalTime().ToString("O"));
 
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
@@ -115,7 +126,7 @@ namespace FocusTracker.Core
             cmd.CommandText =
             """
             SELECT date
-            FROM daily_summary
+            FROM daily_local_aggregates
             ORDER BY date DESC
             LIMIT 1;
             """;
@@ -146,30 +157,38 @@ namespace FocusTracker.Core
             return DateTime.Parse(result.ToString()).Date;
         }
 
-        private static void UpsertDailySummary(
+        private static void UpsertAggregate(
             SqliteConnection connection,
             string date,
-            double minutes,
-            int sessions,
-            int fragmentation)
+            int totalSeconds,
+            int longestSeconds,
+            int fragmentation,
+            double focusPercentage)
         {
             var cmd = connection.CreateCommand();
             cmd.CommandText =
             """
-            INSERT INTO daily_summary
-            (date, focus_minutes, focus_sessions, fragmentation_score)
-            VALUES ($date, $minutes, $sessions, $frag)
+            INSERT INTO daily_local_aggregates
+            (date, total_focused_seconds, longest_focus_seconds,
+             fragmentation_score, focus_percentage,
+             sync_status, computed_at)
+            VALUES ($date, $total, $longest, $frag, $percent,
+                    'PENDING', $now)
             ON CONFLICT(date)
             DO UPDATE SET
-                focus_minutes = excluded.focus_minutes,
-                focus_sessions = excluded.focus_sessions,
-                fragmentation_score = excluded.fragmentation_score;
+                total_focused_seconds = excluded.total_focused_seconds,
+                longest_focus_seconds = excluded.longest_focus_seconds,
+                fragmentation_score = excluded.fragmentation_score,
+                focus_percentage = excluded.focus_percentage,
+                computed_at = excluded.computed_at;
             """;
 
             cmd.Parameters.AddWithValue("$date", date);
-            cmd.Parameters.AddWithValue("$minutes", minutes);
-            cmd.Parameters.AddWithValue("$sessions", sessions);
+            cmd.Parameters.AddWithValue("$total", totalSeconds);
+            cmd.Parameters.AddWithValue("$longest", longestSeconds);
             cmd.Parameters.AddWithValue("$frag", fragmentation);
+            cmd.Parameters.AddWithValue("$percent", focusPercentage);
+            cmd.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
 
             cmd.ExecuteNonQuery();
         }

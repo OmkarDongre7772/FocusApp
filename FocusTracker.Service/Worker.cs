@@ -8,6 +8,8 @@ namespace FocusTracker.Service;
 public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
+    private readonly FragmentationConfig _fragConfig;
+    private readonly SupabaseOptions _supabaseOptions;
 
     private AppTracker? _tracker;
     private EventLogger? _eventLogger;
@@ -16,16 +18,23 @@ public class Worker : BackgroundService
     private FocusSessionTracker? _focusTracker;
     private IpcServer? _ipcServer;
     private NotificationPolicy? _notificationPolicy;
-    private readonly FragmentationConfig _fragConfig;
-
     private DailyAggregationService? _dailyAggregation;
+
+    private LocalUserRepository? _userRepo;
+    private CloudSyncService? _cloudSync;
+
+    private bool _trackingEnabled;
+    private bool _isLoggedIn;
     private DateTime _lastAggregationDate = DateTime.MinValue;
 
-
-    public Worker( ILogger<Worker> logger, IOptions<FragmentationConfig> fragOptions)
+    public Worker(
+        ILogger<Worker> logger,
+        IOptions<FragmentationConfig> fragOptions,
+        IOptions<SupabaseOptions> supabaseOptions)
     {
         _logger = logger;
         _fragConfig = fragOptions.Value;
+        _supabaseOptions = supabaseOptions.Value;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -34,95 +43,160 @@ public class Worker : BackgroundService
 
         SQLitePCL.Batteries.Init();
 
+        // ===============================
+        // Core Setup
+        // ===============================
         _database = new Database();
         _eventLogger = new EventLogger(_database);
         _tracker = new AppTracker();
-
         _focusMode = new FocusModeService();
         _focusTracker = new FocusSessionTracker(_fragConfig);
         _notificationPolicy = new NotificationPolicy();
-
         _dailyAggregation = new DailyAggregationService();
+        _userRepo = new LocalUserRepository();
 
-        // Run recovery on startup
         _dailyAggregation.RunAggregationForAllMissingDays();
         _lastAggregationDate = DateTime.Now.Date;
 
+        RefreshTrackingState();
 
-        bool isIdle = false;
+        // ===============================
+        // Cloud Setup
+        // ===============================
+        if (!string.IsNullOrWhiteSpace(_supabaseOptions.Url) &&
+            !string.IsNullOrWhiteSpace(_supabaseOptions.AnonPublicKey))
+        {
+            var httpClient = new HttpClient();
 
+            var supabaseClient =
+                new SupabaseClient(httpClient, _supabaseOptions);
 
-        // ===== Focus lifecycle =====
+            var authClient =
+                new SupabaseAuthClient(httpClient, _supabaseOptions);
 
+            _cloudSync = new CloudSyncService(
+                _userRepo!,
+                new LocalAggregateRepository(),
+                supabaseClient,
+                authClient,
+                _logger);
+
+            _logger.LogInformation("Cloud sync initialized.");
+        }
+
+        // ===============================
+        // Focus Lifecycle Wiring
+        // ===============================
         _focusMode.FocusStartedWithDuration += d =>
             _focusTracker.OnFocusStarted(d);
 
         _focusMode.FocusEndedWithResult += completed =>
             _focusTracker.OnFocusEnded(completed);
 
-        // ===== Activity Logging =====
+        bool isIdle = false;
 
         _tracker.AppChanged += app =>
         {
+            if (!_trackingEnabled) return;
+
             _eventLogger.OnAppChanged(app);
 
-            if (_focusMode.IsActive && !isIdle)
-            {
-                _focusTracker.AddInterrupt();
-            }
+            if (_focusMode!.IsActive && !isIdle)
+                _focusTracker!.AddInterrupt();
         };
 
         _tracker.IdleStarted += () =>
         {
-            _eventLogger.OnIdleStarted();
+            if (!_trackingEnabled) return;
+            _eventLogger!.OnIdleStarted();
             isIdle = true;
         };
 
         _tracker.IdleEnded += () =>
         {
-            _eventLogger.OnIdleEnded();
+            if (!_trackingEnabled) return;
+            _eventLogger!.OnIdleEnded();
             isIdle = false;
         };
 
-
         _tracker.Start();
 
-        _ipcServer = new IpcServer(_focusMode, _notificationPolicy);
+        _ipcServer = new IpcServer(
+            _focusMode,
+            _notificationPolicy,
+            _supabaseOptions);
+
         _ = _ipcServer.StartAsync(stoppingToken);
 
-        // Focus timer engine
+        // ===============================
+        // LOOP 1 → 1 SECOND PRECISION
+        // ===============================
         _ = Task.Run(async () =>
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                _focusMode?.Tick();
+                RefreshTrackingState();
 
-                if (_focusMode?.IsActive == true && isIdle)
+                if (_trackingEnabled)
                 {
-                    _focusTracker?.AddIdleSeconds(1);
+                    _focusMode!.Tick();
+
+                    if (_focusMode.IsActive && isIdle)
+                        _focusTracker!.AddIdleSeconds(1);
+
+                    var today = DateTime.Now.Date;
+
+                    if (_lastAggregationDate != today)
+                    {
+                        _dailyAggregation!
+                            .RunAggregationForAllMissingDays();
+                        _lastAggregationDate = today;
+                    }
                 }
-
-                // 🔹 DAILY AGGREGATION CHECK (Local Midnight)
-                var today = DateTime.Now.Date;
-
-                if (_lastAggregationDate != today)
-                {
-                    _dailyAggregation.RunAggregationForAllMissingDays();
-                    _lastAggregationDate = today;
-                }
-
 
                 await Task.Delay(1000, stoppingToken);
             }
 
         }, stoppingToken);
 
+        // ===============================
+        // LOOP 2 → CLOUD SYNC LOOP
+        // ===============================
+        if (_cloudSync != null)
+        {
+            _ = Task.Run(async () =>
+            {
+                while (!stoppingToken.IsCancellationRequested)
+                {
+                    try
+                    {
+                        if (_isLoggedIn)
+                            await _cloudSync.RunOnceAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Cloud sync failed.");
+                    }
+
+                    await Task.Delay(
+                        TimeSpan.FromMinutes(
+                            _supabaseOptions.SyncIntervalMinutes),
+                        stoppingToken);
+                }
+
+            }, stoppingToken);
+        }
+
+        await Task.CompletedTask;
     }
 
-
-    public override Task StopAsync(CancellationToken cancellationToken)
+    private void RefreshTrackingState()
     {
-        _logger.LogInformation("FocusTracker Service stopping.");
-        return base.StopAsync(cancellationToken);
+        if (_userRepo == null) return;
+
+        var user = _userRepo.Get();
+
+        _trackingEnabled = user.TrackingEnabled;
+        _isLoggedIn = !string.IsNullOrWhiteSpace(user.AccessToken);
     }
 }

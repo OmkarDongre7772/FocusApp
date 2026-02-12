@@ -25,6 +25,9 @@ public class IpcClient
             client.ReadMode = PipeTransmissionMode.Message;
 
             var json = JsonSerializer.Serialize(request);
+
+            Debug.WriteLine("Json =>" + json);
+
             var requestBytes = Encoding.UTF8.GetBytes(json);
 
             await client.WriteAsync(requestBytes, 0, requestBytes.Length);
@@ -43,6 +46,8 @@ public class IpcClient
             while (!client.IsMessageComplete);
 
             var responseJson = Encoding.UTF8.GetString(ms.ToArray());
+
+            Debug.WriteLine("Json response =>" + responseJson);
 
             if (string.IsNullOrWhiteSpace(responseJson))
                 return null;

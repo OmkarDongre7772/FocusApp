@@ -6,7 +6,7 @@ namespace FocusTracker.Core
 {
     public class AnalyticsService
     {
-        private static string ConnectionString = $"Data Source={DatabasePaths.GetDatabasePath()};Cache=Shared";
+        private static readonly string ConnectionString = $"Data Source={DatabasePaths.GetDatabasePath()};Cache=Shared";
         private static readonly TimeSpan MinFocusDuration = TimeSpan.FromMinutes(2);
 
         public TodaySummary GetTodaySummary()
@@ -79,14 +79,16 @@ namespace FocusTracker.Core
 
         public WeeklySummary GetLast7Days()
         {
-            using var conn = new SqliteConnection($"Data Source={DatabasePaths.GetDatabasePath()};Cache=Shared");
+            using var conn = new SqliteConnection(ConnectionString);
             conn.Open();
 
             var cmd = conn.CreateCommand();
             cmd.CommandText =
             """
-    SELECT date, focus_minutes, focus_sessions, fragmentation_score
-    FROM daily_summary
+    SELECT date,
+           total_focused_seconds,
+           fragmentation_score
+    FROM daily_local_aggregates
     ORDER BY date DESC
     LIMIT 7;
     """;
@@ -96,12 +98,14 @@ namespace FocusTracker.Core
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
+                var focusedSeconds = reader.GetInt32(1);
+
                 summary.Days.Add(new DailyRow
                 {
                     Date = reader.GetString(0),
-                    FocusMinutes = reader.GetDouble(1),
-                    FocusSessions = reader.GetInt32(2),
-                    FragmentationScore = reader.GetInt32(3)
+                    FocusMinutes = focusedSeconds / 60.0,
+                    FocusSessions = 0, // not stored anymore
+                    FragmentationScore = reader.GetInt32(2)
                 });
             }
 

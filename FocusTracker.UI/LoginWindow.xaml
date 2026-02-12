@@ -1,0 +1,34 @@
+<Window x:Class="FocusTracker.UI.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Login"
+        Height="300"
+        Width="340"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+
+    <StackPanel Margin="20">
+
+        <TextBlock Text="Email"/>
+        <TextBox x:Name="EmailBox"
+                 Margin="0,5,0,10"/>
+
+        <TextBlock Text="Password"/>
+        <PasswordBox x:Name="PasswordBox"
+                     Margin="0,5,0,10"/>
+
+        <TextBlock Text="Team ID (optional)"/>
+        <TextBox x:Name="TeamBox"
+                 Margin="0,5,0,15"/>
+
+        <Button Content="Login"
+                Height="32"
+                Margin="0,0,0,8"
+                Click="Login_Click"/>
+
+        <Button Content="Register"
+                Height="28"
+                Click="Register_Click"/>
+
+    </StackPanel>
+</Window>

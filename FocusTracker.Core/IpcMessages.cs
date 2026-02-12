@@ -9,6 +9,12 @@ public class IpcRequest
     public int? DurationMinutes { get; set; }
 
     public bool? ToggleValue { get; set; }
+
+    public string? Username { get; set; }
+
+    public string? TeamId { get; set; }
+    public string? Password { get; set; }
+
 }
 
 public class IpcResponse
@@ -27,4 +33,12 @@ public class ServiceStatus
     public DateTime? FocusEndsAtUtc { get; set; }
 
     public DateTime? SnoozedUntilUtc { get; set; }
+
+    public bool TrackingEnabled { get; set; }
+
+    public bool IsLoggedIn { get; set; }
+
+    public string? Username { get; set; }
+
+    public string? TeamId { get; set; }
 }

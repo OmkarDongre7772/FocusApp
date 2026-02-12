@@ -1,166 +1,316 @@
 ﻿using FocusTracker.Core;
+using System;
 using System.ComponentModel;
-using System.Diagnostics;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Forms;
+using System.Windows.Media;
 using Application = System.Windows.Application;
+using Brushes = System.Windows.Media.Brushes;
 
 namespace FocusTracker.UI
 {
     public partial class MainWindow : Window
     {
         private readonly TrayManager _tray;
-        private readonly NotificationPolicy _notificationPolicy;
-        private readonly SettingsService _settings;
         private readonly IpcClient _ipc = new();
+
+        private CancellationTokenSource? _statusCts;
+
+        private DateTime? _currentFocusEnd;
+        private DateTime? _currentFocusStart;
+
+        private bool _suppressToggleEvent = false;
 
         public MainWindow()
         {
             InitializeComponent();
 
-            _notificationPolicy = new NotificationPolicy();
-            _settings = new SettingsService();
-
             _tray = new TrayManager(
                 onOpen: ShowWindow,
                 onExit: ExitApp,
-                onSnooze: SnoozeNotifications,
-                onSettings: OpenSettings,
+                onSnooze: _ => { },
+                onSettings: () => { },
                 onFocusStart: StartFocus,
                 onFocusStop: StopFocus
             );
+
+            StartStatusLoop();
         }
 
-        // =======================
-        // Tray Actions
-        // =======================
+        // =========================
+        // STATUS LOOP
+        // =========================
 
-        private void OpenSettings()
+        private void StartStatusLoop()
         {
-            if (!IsVisible)
+            _statusCts = new CancellationTokenSource();
+            var token = _statusCts.Token;
+
+            _ = Task.Run(async () =>
             {
-                Show();
-                WindowState = WindowState.Normal;
+                while (!token.IsCancellationRequested)
+                {
+                    try
+                    {
+                        var response =
+                            await _ipc.SendAsync(new IpcRequest
+                            {
+                                Command = "GetStatus"
+                            });
+
+                        if (response?.Status != null)
+                        {
+                            Application.Current.Dispatcher.Invoke(() =>
+                            {
+                                RenderStatus(response.Status);
+                            });
+                        }
+                    }
+                    catch
+                    {
+                        // Silent fail — service may be restarting
+                    }
+
+                    await Task.Delay(1000, token);
+                }
+
+            }, token);
+        }
+
+        // =========================
+        // RENDER STATUS
+        // =========================
+
+        private void RenderStatus(ServiceStatus status)
+        {
+            RenderLoginState(status);
+            RenderTrackingState(status);
+            RenderFocusState(status);
+        }
+
+        private void RenderLoginState(ServiceStatus status)
+        {
+            if (status.IsLoggedIn)
+            {
+                LoginStatusText.Text =
+                    $"Logged in as {status.Username}" +
+                    (status.TeamId != null
+                        ? $" (Team: {status.TeamId})"
+                        : "");
+
+                LoginButton.Content = "Logout";
+            }
+            else
+            {
+                LoginStatusText.Text = "Not logged in (Local mode)";
+                LoginButton.Content = "Login";
             }
 
-            var win = new SettingsWindow(_settings)
-            {
-                Owner = this,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
-
-            win.ShowDialog();
+            // ✅ Tracking works in both local and cloud mode
+            TrackingToggle.IsEnabled = true;
         }
 
-        private void SnoozeNotifications(TimeSpan duration)
+        private void RenderTrackingState(ServiceStatus status)
         {
-            _notificationPolicy.Snooze(duration);
+            _suppressToggleEvent = true;
 
-            _tray.TrayIcon.ShowBalloonTip(
-                2000,
-                "Notifications Snoozed",
-                $"Notifications paused for {duration.TotalMinutes} minutes",
-                ToolTipIcon.Info
-            );
+            TrackingToggle.IsChecked = status.TrackingEnabled;
+            TrackingToggle.Content =
+                status.TrackingEnabled
+                    ? "Tracking Enabled"
+                    : "Tracking Disabled";
+
+            _suppressToggleEvent = false;
         }
 
-        private void StartFocus(TimeSpan duration)
+        private void RenderFocusState(ServiceStatus status)
         {
-            _ = Task.Run(async () =>
+            if (status.IsFocusActive &&
+                status.FocusEndsAtUtc != null)
             {
-                Console.WriteLine("Terminal-> Start Focus Clicked");
-                Debug.WriteLine("Debug-> Start Focus Clicked");
-                var response = await _ipc.SendAsync(new IpcRequest
-                {
-                    Command = "StartFocus",
-                    DurationMinutes = (int)duration.TotalMinutes
-                });
+                FocusStatusText.Text = "ACTIVE";
+                FocusStatusText.Foreground = Brushes.DarkGreen;
 
-                Application.Current.Dispatcher.Invoke(() =>
+                _currentFocusEnd = status.FocusEndsAtUtc.Value;
+
+                if (_currentFocusStart == null)
+                    _currentFocusStart = DateTime.UtcNow;
+
+                var total =
+                    (_currentFocusEnd.Value - _currentFocusStart.Value).TotalSeconds;
+
+                var remaining =
+                    (_currentFocusEnd.Value - DateTime.UtcNow).TotalSeconds;
+
+                if (remaining > 0 && total > 0)
                 {
-                    _tray.TrayIcon.ShowBalloonTip(
-                        2000,
-                        "Focus Mode",
-                        response?.Message ?? "No response",
-                        ToolTipIcon.Info);
-                });
-            });
+                    double progress =
+                        (1 - (remaining / total)) * 100;
+
+                    FocusProgressBar.Value = progress;
+
+                    CountdownText.Text =
+                        $"Ends in {TimeSpan.FromSeconds(remaining):mm\\:ss}";
+                }
+            }
+            else
+            {
+                FocusStatusText.Text = "Inactive";
+                FocusStatusText.Foreground = Brushes.Gray;
+                FocusProgressBar.Value = 0;
+                CountdownText.Text = "";
+                _currentFocusStart = null;
+            }
         }
 
-        private void StopFocus()
-        {
-            _ = Task.Run(async () =>
-            {
-                Console.WriteLine("Terminal-> Stop Focus Clicked");
-                Debug.WriteLine("Debug-> Stop Focus Clicked");
-                var response = await _ipc.SendAsync(new IpcRequest
-                {
-                    Command = "StopFocus"
-                });
-
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    _tray.TrayIcon.ShowBalloonTip(
-                        2000,
-                        "Focus Mode",
-                        response?.Message ?? "No response",
-                        ToolTipIcon.Info);
-                });
-            });
-        }
-
-        // =======================
-        // UI
-        // =======================
+        // =========================
+        // DASHBOARD
+        // =========================
 
         private void ShowWindow()
         {
             Show();
-            WindowState = WindowState.Normal;
             Activate();
 
             var analytics = new AnalyticsService();
             var summary = analytics.GetTodaySummary();
 
-            AppSwitchesText.Text = $"Focus Sessions: {summary.FocusSessions}";
-            FocusTimeText.Text = $"Focused Time: {summary.FocusMinutes:F1} minutes";
-            LongestFocusText.Text = $"Longest Focus: {summary.LongestFocusMinutes:F1} minutes";
+            AppSwitchesText.Text =
+                $"Sessions: {summary.FocusSessions}";
+
+            FocusTimeText.Text =
+                $"Focus Time: {summary.FocusMinutes:F1} minutes";
+
+            LongestFocusText.Text =
+                $"Longest Session: {summary.LongestFocusMinutes:F1} minutes";
 
             var weekly = analytics.GetLast7Days();
 
-            WeeklyText.Text =
-                weekly.Days.Count == 0
-                    ? "No weekly data yet"
-                    : $"7-day avg focus: {weekly.Days.Average(d => d.FocusMinutes):F1} min/day";
-
-            SuggestionsList.ItemsSource =
-                new SuggestionEngine().GetSuggestions();
-
-            NotificationStatusText.Text = "Service-managed focus mode";
-
             if (weekly.Days.Count > 0)
             {
-                var latest = weekly.Days.First();
+                var avgFocus =
+                    weekly.Days.Average(d => d.FocusMinutes);
+
+                var avgFrag =
+                    weekly.Days.Average(d => d.FragmentationScore);
+
+                WeeklyText.Text =
+                    $"Avg Focus: {avgFocus:F1} min/day";
+
+                CompletionTrendText.Text =
+                    avgFrag > 60
+                        ? "High fragmentation detected"
+                        : "Healthy focus stability";
+
                 FragmentationText.Text =
-                    $"Fragmentation: {latest.FragmentationScore}/100";
+                    $"Fragmentation: {weekly.Days.First().FragmentationScore}/100";
             }
             else
             {
-                FragmentationText.Text = "Fragmentation: No data yet";
+                WeeklyText.Text = "Not enough weekly data";
+                CompletionTrendText.Text = "";
+                FragmentationText.Text = "";
             }
 
             var stats = new FocusStatsService().GetStats();
-            FocusStatsText.Text =
-                $"Sessions: {stats.TotalSessions}, " +
-                $"Completed: {stats.CompletedSessions}, " +
-                $"Completion: {stats.CompletionRate:P0}\n" +
-                $"Current streak: {stats.CurrentStreak}, " +
-                $"Best streak: {stats.LongestStreak}";
+
+            InterruptText.Text =
+                $"Completion Rate: {stats.CompletionRate:P0}";
+
+            IdleText.Text =
+                $"Current Streak: {stats.CurrentStreak}";
         }
+
+        // =========================
+        // TRACKING TOGGLE
+        // =========================
+
+        private async void TrackingToggle_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_suppressToggleEvent) return;
+
+            await _ipc.SendAsync(new IpcRequest
+            {
+                Command = "ToggleTracking",
+                ToggleValue = true
+            });
+        }
+
+        private async void TrackingToggle_Unchecked(object sender, RoutedEventArgs e)
+        {
+            if (_suppressToggleEvent) return;
+
+            await _ipc.SendAsync(new IpcRequest
+            {
+                Command = "ToggleTracking",
+                ToggleValue = false
+            });
+        }
+
+        // =========================
+        // LOGIN / LOGOUT
+        // =========================
+
+        private async void LoginButton_Click(object sender, RoutedEventArgs e)
+        {
+            var status =
+                await _ipc.SendAsync(new IpcRequest
+                {
+                    Command = "GetStatus"
+                });
+
+            if (status?.Status?.IsLoggedIn == true)
+            {
+                await _ipc.SendAsync(new IpcRequest
+                {
+                    Command = "Logout"
+                });
+            }
+            else
+            {
+                var login = new LoginWindow
+                {
+                    Owner = this
+                };
+
+                login.ShowDialog();
+            }
+        }
+
+        // =========================
+        // FOCUS CONTROL
+        // =========================
+
+        private void StartFocus(TimeSpan duration)
+        {
+            _ = _ipc.SendAsync(new IpcRequest
+            {
+                Command = "StartFocus",
+                DurationMinutes = (int)duration.TotalMinutes
+            });
+
+            _currentFocusStart = DateTime.UtcNow;
+        }
+
+        private void StopFocus()
+        {
+            _ = _ipc.SendAsync(new IpcRequest
+            {
+                Command = "StopFocus"
+            });
+
+            _currentFocusStart = null;
+        }
+
+        // =========================
+        // EXIT
+        // =========================
 
         private void ExitApp()
         {
+            _statusCts?.Cancel();
             _tray.Dispose();
             Application.Current.Shutdown();
         }

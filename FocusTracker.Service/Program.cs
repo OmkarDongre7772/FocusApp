@@ -1,33 +1,31 @@
 using FocusTracker.Core;
+using FocusTracker.Service;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.Extensions.Logging;
 
-namespace FocusTracker.Service;
+var builder = Host.CreateApplicationBuilder(args);
 
-public class Program
+// Windows Service Support
+builder.Services.AddWindowsService(options =>
 {
-    public static void Main(string[] args)
-    {
-        var builder = Host.CreateApplicationBuilder(args);
+    options.ServiceName = "FocusTrackerService";
+});
 
-        // Always support both modes
-        builder.Services.AddWindowsService(options =>
-        {
-            options.ServiceName = "FocusTrackerService";
-        });
+// Logging (Console + File via built-in provider)
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 
-        builder.Logging.ClearProviders();
-        builder.Logging.AddConsole();
+// Configuration binding
+builder.Services.Configure<FragmentationConfig>(
+    builder.Configuration.GetSection("Fragmentation"));
 
-        builder.Services.AddHostedService<Worker>();
+builder.Services.Configure<SupabaseOptions>(
+    builder.Configuration.GetSection("Supabase"));
 
-        builder.Services.Configure<FragmentationConfig>(
-        builder.Configuration.GetSection("Fragmentation"));
+// Hosted service
+builder.Services.AddHostedService<Worker>();
 
-        var host = builder.Build();
-        host.Run();
+var host = builder.Build();
 
-    }
-}
+host.Run();
