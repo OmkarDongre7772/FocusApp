@@ -11,6 +11,9 @@ public class CloudSyncService
     private readonly SupabaseAuthClient _authClient;
     private readonly ILogger _logger;
 
+    private bool _isRunning = false;
+
+
     public CloudSyncService(
         LocalUserRepository userRepo,
         LocalAggregateRepository aggregateRepo,
@@ -26,6 +29,21 @@ public class CloudSyncService
     }
 
     public async Task RunOnceAsync()
+    {
+        if (_isRunning) return;
+        _isRunning = true;
+
+        try
+        {
+            await ExecuteSyncInternal();
+        }
+        finally
+        {
+            _isRunning = false;
+        }
+    }
+
+    private async Task ExecuteSyncInternal()
     {
         var user = _userRepo.Get();
 
@@ -53,12 +71,13 @@ public class CloudSyncService
             }
 
             _userRepo.SaveAuth(
-                refreshResult.UserId,
-                refreshResult.UserEmail,
-                user.TeamId,
-                refreshResult.AccessToken,
-                refreshResult.RefreshToken,
-                DateTime.UtcNow.AddSeconds(refreshResult.ExpiresIn));
+    user.UserId!,
+    user.Username!,
+    user.TeamId,
+    refreshResult.AccessToken,
+    refreshResult.RefreshToken,
+    DateTime.UtcNow.AddSeconds(refreshResult.ExpiresIn));
+
 
             user = _userRepo.Get();
         }
@@ -79,9 +98,13 @@ public class CloudSyncService
                 if (success)
                 {
                     _aggregateRepo.MarkSynced(row.Date);
-                    _logger.LogInformation(
-                        $"Synced {row.Date:yyyy-MM-dd}");
+                    _logger.LogInformation($"Synced {row.Date:yyyy-MM-dd}");
                 }
+                else
+                {
+                    _logger.LogWarning($"Upload rejected for {row.Date:yyyy-MM-dd}");
+                }
+
             }
             catch (Exception ex)
             {

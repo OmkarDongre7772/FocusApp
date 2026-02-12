@@ -37,41 +37,114 @@ namespace FocusTracker.Core
 
             try
             {
-                var sessions = LoadCompletedSessions(connection, date);
+                var events = LoadEventsForDate(connection, date);
 
                 int totalFocusedSeconds = 0;
                 int longestFocusSeconds = 0;
-                int totalFragmentation = 0;
 
-                foreach (var s in sessions)
+                DateTime? focusStart = null;
+                DateTime? lastTime = null;
+
+                string? lastApp = null;
+
+                var config = FocusConfigLoader.Load();
+
+                foreach (var e in events)
                 {
-                    int seconds = (int)Math.Round(s.ActualMinutes * 60);
+                    if (e.EventType == "APP_SWITCH")
+                    {
+                        if (focusStart == null)
+                        {
+                            focusStart = e.UtcTime;
+                        }
+                        else
+                        {
+                            if (!IsContinuousFocus(lastApp, e.AppName, config))
+                            {
+                                var segment = (int)(e.UtcTime - focusStart.Value).TotalSeconds;
 
-                    totalFocusedSeconds += seconds;
-                    totalFragmentation += s.FragmentationScore;
+                                totalFocusedSeconds += segment;
+                                longestFocusSeconds = Math.Max(longestFocusSeconds, segment);
 
-                    if (seconds > longestFocusSeconds)
-                        longestFocusSeconds = seconds;
+                                focusStart = e.UtcTime;
+                            }
+                        }
+
+                        lastApp = e.AppName;
+                    }
+
+                    if (e.EventType == "IDLE_START" && focusStart != null)
+                    {
+                        var segment = (int)(e.UtcTime - focusStart.Value).TotalSeconds;
+
+                        totalFocusedSeconds += segment;
+                        longestFocusSeconds = Math.Max(longestFocusSeconds, segment);
+
+                        focusStart = null;
+                    }
+
+                    lastTime = e.UtcTime;
                 }
 
-                int sessionCount = sessions.Count;
+                if (focusStart != null && lastTime != null)
+                {
+                    var segment = (int)(lastTime.Value - focusStart.Value).TotalSeconds;
 
-                int avgFragmentation =
-                    sessionCount == 0 ? 0 :
-                    (int)Math.Round((double)totalFragmentation / sessionCount);
+                    totalFocusedSeconds += segment;
+                    longestFocusSeconds = Math.Max(longestFocusSeconds, segment);
+                }
 
-                // Focus % = Focused time / 24h
                 double focusPercentage =
                     totalFocusedSeconds / (24d * 60d * 60d);
+                int interruptCount = events.Count(e => e.EventType == "INTERRUPT");
+
+                int idleSeconds = 0;
+
+                for (int i = 1; i < events.Count; i++)
+                {
+                    if (events[i - 1].EventType == "IDLE_START" &&
+                        events[i].EventType == "IDLE_END")
+                    {
+                        idleSeconds +=
+                            (int)(events[i].UtcTime - events[i - 1].UtcTime)
+                            .TotalSeconds;
+                    }
+                }
+
+                var fragConfig = new FragmentationConfig
+                {
+                    IdleWeight = 0.4,
+                    InterruptWeight = 0.4,
+                    EarlyStopWeight = 0.2,
+                    MaxInterruptThreshold = 20,
+                    MaxIdleThresholdSeconds = 900
+                };
+
+                double idleRatio = Math.Min(1.0,
+                    (double)idleSeconds / fragConfig.MaxIdleThresholdSeconds);
+
+                double interruptRatio = Math.Min(1.0,
+                    (double)interruptCount / fragConfig.MaxInterruptThreshold);
+
+                double score =
+                    (idleRatio * fragConfig.IdleWeight) +
+                    (interruptRatio * fragConfig.InterruptWeight);
+
+                int fragmentation =
+                    (int)Math.Round(Math.Clamp(score * 100, 0, 100));
+
 
                 UpsertAggregate(
                     connection,
-                    date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    date.ToString("yyyy-MM-dd"),
                     totalFocusedSeconds,
                     longestFocusSeconds,
-                    avgFragmentation,
+                    fragmentation,
                     focusPercentage
                 );
+
+                DeleteEventsForDate(connection, date);
+                CleanupOldSyncedAggregates(connection);
 
                 transaction.Commit();
             }
@@ -157,6 +230,80 @@ namespace FocusTracker.Core
             return DateTime.Parse(result.ToString()).Date;
         }
 
+        //Helpers
+        private List<EventRow> LoadEventsForDate(
+                                SqliteConnection connection,
+                                DateTime date){
+            var list = new List<EventRow>();
+
+            var cmd = connection.CreateCommand();
+            cmd.CommandText =
+            """
+    SELECT utc_time, event_type, app_name
+    FROM events
+    WHERE local_date = $date
+    ORDER BY utc_time;
+    """;
+
+            cmd.Parameters.AddWithValue("$date", date.ToString("yyyy-MM-dd"));
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(new EventRow
+                {
+                    UtcTime = DateTime.Parse(reader.GetString(0)),
+                    EventType = reader.GetString(1),
+                    AppName = reader.IsDBNull(2)
+                        ? null
+                        : reader.GetString(2)
+                });
+            }
+
+            return list;
+        }
+
+        private static void DeleteEventsForDate(
+            SqliteConnection connection,
+            DateTime date){
+            var cmd = connection.CreateCommand();
+            cmd.CommandText =
+            """
+    DELETE FROM events
+    WHERE local_date = $date;
+    """;
+
+            cmd.Parameters.AddWithValue("$date", date.ToString("yyyy-MM-dd"));
+            cmd.ExecuteNonQuery();
+        }
+
+        private static bool IsContinuousFocus(
+            string? previous,
+            string? current,
+            FocusConfig config)
+        {
+            if (previous == null || current == null)
+                return false;
+
+            if (previous == current)
+                return true;
+
+            var pair = string.Compare(previous, current,
+                StringComparison.OrdinalIgnoreCase) < 0
+                ? (previous, current)
+                : (current, previous);
+
+            return config.FocusPairs.Contains(pair);
+        }
+
+        private class EventRow
+        {
+            public DateTime UtcTime { get; set; }
+            public string EventType { get; set; }
+            public string? AppName { get; set; }
+        }
+
+
         private static void UpsertAggregate(
             SqliteConnection connection,
             string date,
@@ -198,5 +345,19 @@ namespace FocusTracker.Core
             public double ActualMinutes { get; set; }
             public int FragmentationScore { get; set; }
         }
+        private static void CleanupOldSyncedAggregates(
+    SqliteConnection connection)
+        {
+            var cmd = connection.CreateCommand();
+            cmd.CommandText =
+            """
+    DELETE FROM daily_local_aggregates
+    WHERE sync_status = 'SYNCED'
+      AND date < date('now', '-30 days');
+    """;
+
+            cmd.ExecuteNonQuery();
+        }
+
     }
 }

@@ -7,26 +7,31 @@ namespace FocusTracker.Core
     {
         private readonly NotificationService _notifications;
         private readonly NotificationPolicy _policy;
+        private readonly SettingsService _settings;
 
         public NudgeService(
-            NotificationService notifications,
-            NotificationPolicy policy,
-            FocusModeService focusMode)
+    NotificationService notifications,
+    NotificationPolicy policy,
+    FocusModeService focusMode,
+    SettingsService settings)
         {
             _notifications = notifications;
             _policy = policy;
             _focusMode = focusMode;
+            _settings = settings;
         }
+
 
         private readonly Queue<DateTime> _switchTimes = new();
         private DateTime? _focusStart;
 
         private bool _focusNudged = false;
-        private DateTime _lastRuleFire = DateTime.MinValue;
+        private readonly Dictionary<string, DateTime> _ruleCooldowns = new();
+
 
         private static readonly TimeSpan FocusPraiseThreshold = TimeSpan.FromMinutes(1);
         private static readonly TimeSpan FragmentWindow = TimeSpan.FromMinutes(1);
-        private const int FragmentSwitchCount = 1;
+        private const int FragmentSwitchCount = 5;
 
         // per-rule cooldown
         private static readonly TimeSpan RuleCooldown = TimeSpan.FromMinutes(1);
@@ -91,18 +96,24 @@ namespace FocusTracker.Core
 
         private void TryNudge(string ruleId, string title, string message)
         {
-            if (_focusMode.IsActive) return;
-            var now = DateTime.UtcNow;
-
-            // 1️⃣ per-rule cooldown
-            if (now - _lastRuleFire < RuleCooldown)
+            if (!_settings.Current.NudgesEnabled)
                 return;
 
-            // 2️⃣ global policy check
+            if (_focusMode.IsActive)
+                return;
+
+            var now = DateTime.UtcNow;
+
+            if (_ruleCooldowns.TryGetValue(ruleId, out var lastFire))
+            {
+                if (now - lastFire < RuleCooldown)
+                    return;
+            }
+
             if (!_policy.CanNotify(ruleId))
                 return;
 
-            _lastRuleFire = now;
+            _ruleCooldowns[ruleId] = now;
             _policy.RecordNotification();
             _notifications.Show(title, message);
         }

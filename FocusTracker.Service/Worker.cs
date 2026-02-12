@@ -2,6 +2,8 @@ using FocusTracker.Core;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Windows.Forms;
+using System.Drawing;
 
 namespace FocusTracker.Service;
 
@@ -22,6 +24,12 @@ public class Worker : BackgroundService
 
     private LocalUserRepository? _userRepo;
     private CloudSyncService? _cloudSync;
+
+    // ✅ NEW (no functional interference)
+    private NotifyIcon? _notifyIcon;
+    private NotificationService? _notificationService;
+    private NudgeService? _nudgeService;
+    private SettingsService? _settingsService;
 
     private bool _trackingEnabled;
     private bool _isLoggedIn;
@@ -54,6 +62,26 @@ public class Worker : BackgroundService
         _notificationPolicy = new NotificationPolicy();
         _dailyAggregation = new DailyAggregationService();
         _userRepo = new LocalUserRepository();
+
+        // ===============================
+        // ✅ Notification + Nudge Setup
+        // ===============================
+        _settingsService = new SettingsService();
+
+        _notifyIcon = new NotifyIcon
+        {
+            Visible = true,
+            Icon = SystemIcons.Information,
+            Text = "FocusTracker"
+        };
+
+        _notificationService = new NotificationService(_notifyIcon);
+
+        _nudgeService = new NudgeService(
+            _notificationService,
+            _notificationPolicy,
+            _focusMode,
+            _settingsService);
 
         _dailyAggregation.RunAggregationForAllMissingDays();
         _lastAggregationDate = DateTime.Now.Date;
@@ -101,21 +129,31 @@ public class Worker : BackgroundService
 
             _eventLogger.OnAppChanged(app);
 
+            // ✅ Nudge hook (no behavior change)
+            _nudgeService?.OnAppChanged();
+
             if (_focusMode!.IsActive && !isIdle)
+            {
                 _focusTracker!.AddInterrupt();
+                _eventLogger.OnInterrupt();
+            }
         };
 
         _tracker.IdleStarted += () =>
         {
             if (!_trackingEnabled) return;
+
             _eventLogger!.OnIdleStarted();
+            _nudgeService?.OnIdleStarted();
             isIdle = true;
         };
 
         _tracker.IdleEnded += () =>
         {
             if (!_trackingEnabled) return;
+
             _eventLogger!.OnIdleEnded();
+            _nudgeService?.OnIdleEnded();
             isIdle = false;
         };
 
@@ -141,6 +179,9 @@ public class Worker : BackgroundService
                 {
                     _focusMode!.Tick();
 
+                    // ✅ Nudge Tick (no logic change)
+                    _nudgeService?.Tick();
+
                     if (_focusMode.IsActive && isIdle)
                         _focusTracker!.AddIdleSeconds(1);
 
@@ -150,6 +191,7 @@ public class Worker : BackgroundService
                     {
                         _dailyAggregation!
                             .RunAggregationForAllMissingDays();
+
                         _lastAggregationDate = today;
                     }
                 }
@@ -171,7 +213,10 @@ public class Worker : BackgroundService
                     try
                     {
                         if (_isLoggedIn)
+                        {
+                            _dailyAggregation!.RunAggregationForAllMissingDays();
                             await _cloudSync.RunOnceAsync();
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -187,7 +232,17 @@ public class Worker : BackgroundService
             }, stoppingToken);
         }
 
-        await Task.CompletedTask;
+        // ✅ Proper tray disposal on shutdown
+        stoppingToken.Register(() =>
+        {
+            if (_notifyIcon != null)
+            {
+                _notifyIcon.Visible = false;
+                _notifyIcon.Dispose();
+            }
+        });
+
+        await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 
     private void RefreshTrackingState()

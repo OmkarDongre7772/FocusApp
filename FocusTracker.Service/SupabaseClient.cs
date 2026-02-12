@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.Json;
 using FocusTracker.Core;
+using static FocusTracker.Service.LocalAggregateRepository;
 
 namespace FocusTracker.Service;
 
@@ -25,13 +26,16 @@ public class SupabaseClient
         LocalAggregateRow row)
     {
         var request = new HttpRequestMessage(
-            HttpMethod.Post,
-            $"{_baseUrl}/rest/v1/daily_team_aggregates");
+    HttpMethod.Post,
+    $"{_baseUrl}/rest/v1/daily_team_aggregates?on_conflict=team_id,user_id,date");
+
 
         request.Headers.Authorization =
             new AuthenticationHeaderValue("Bearer", accessToken);
 
         request.Headers.Add("apikey", _anonKey);
+        request.Headers.Add("Prefer", "resolution=merge-duplicates");
+
 
         request.Content = new StringContent(
             JsonSerializer.Serialize(new

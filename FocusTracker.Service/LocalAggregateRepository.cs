@@ -10,6 +10,8 @@ public class LocalAggregateRepository
 
     public List<LocalAggregateRow> GetPending()
     {
+        var list = new List<LocalAggregateRow>();
+
         using var conn = new SqliteConnection(ConnectionString);
         conn.Open();
 
@@ -26,7 +28,6 @@ public class LocalAggregateRepository
 
         using var reader = cmd.ExecuteReader();
 
-        var list = new List<LocalAggregateRow>();
 
         while (reader.Read())
         {
@@ -39,8 +40,8 @@ public class LocalAggregateRepository
                 FocusPercentage = reader.GetDouble(4)
             });
         }
+        return list.OrderBy(x => x.Date).ToList();
 
-        return list;
     }
 
     public void MarkSynced(DateTime date)
@@ -50,21 +51,31 @@ public class LocalAggregateRepository
 
         var cmd = conn.CreateCommand();
         cmd.CommandText = """
-            UPDATE daily_local_aggregates
-            SET sync_status = 'SYNCED'
-            WHERE date = $date;
-        """;
+        UPDATE daily_local_aggregates
+        SET sync_status = 'SYNCED'
+        WHERE date = $date;
+    """;
 
         cmd.Parameters.AddWithValue("$date", date.ToString("yyyy-MM-dd"));
         cmd.ExecuteNonQuery();
-    }
-}
 
-public class LocalAggregateRow
-{
-    public DateTime Date { get; set; }
-    public int TotalFocusedSeconds { get; set; }
-    public int LongestFocusSeconds { get; set; }
-    public int FragmentationScore { get; set; }
-    public double FocusPercentage { get; set; }
+        var cleanup = conn.CreateCommand();
+        cleanup.CommandText = """
+        DELETE FROM daily_local_aggregates
+        WHERE sync_status = 'SYNCED'
+          AND date < date('now', '-30 days');
+    """;
+
+        cleanup.ExecuteNonQuery();
+    }
+
+
+    public class LocalAggregateRow
+    {
+        public DateTime Date { get; set; }
+        public int TotalFocusedSeconds { get; set; }
+        public int LongestFocusSeconds { get; set; }
+        public int FragmentationScore { get; set; }
+        public double FocusPercentage { get; set; }
+    }
 }

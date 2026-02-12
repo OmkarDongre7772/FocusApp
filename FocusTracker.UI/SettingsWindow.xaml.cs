@@ -1,5 +1,6 @@
 ﻿using FocusTracker.Core;
 using System.Windows;
+using MessageBox = System.Windows.MessageBox;
 
 namespace FocusTracker.UI
 {
@@ -27,17 +28,25 @@ namespace FocusTracker.UI
 
         private void Save_Click(object sender, RoutedEventArgs e)
         {
+            if (!int.TryParse(FocusMinutesBox.Text, out int focusMinutes) ||
+                !int.TryParse(MaxNotifBox.Text, out int maxNotif))
+            {
+                MessageBox.Show("Please enter valid numbers.");
+                return;
+            }
+
             var updated = new AppSettings
             {
                 NudgesEnabled = NudgesCheckBox.IsChecked == true,
                 FragmentationSensitivity = SensitivityCombo.SelectedIndex + 1,
-                FocusPraiseMinutes = int.Parse(FocusMinutesBox.Text),
-                MaxNotificationsPerHour = int.Parse(MaxNotifBox.Text),
+                FocusPraiseMinutes = focusMinutes,
+                MaxNotificationsPerHour = maxNotif,
                 DefaultSnoozeMinutes = _settings.Current.DefaultSnoozeMinutes
             };
 
             _settings.Update(updated);
             Close();
         }
+
     }
 }

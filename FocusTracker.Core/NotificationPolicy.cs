@@ -28,11 +28,12 @@ namespace FocusTracker.Core
             if (now < _snoozedUntil)
                 return false;
 
-            if (now - _hourWindowStart >= TimeSpan.FromHours(1))
+            if ((now - _hourWindowStart).TotalHours >= 1)
             {
                 _hourWindowStart = now;
                 _hourlyCount = 0;
             }
+
 
             if (_hourlyCount >= MaxNotificationsPerHour)
                 return false;

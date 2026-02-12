@@ -31,7 +31,7 @@ namespace FocusTracker.UI
                 onOpen: ShowWindow,
                 onExit: ExitApp,
                 onSnooze: _ => { },
-                onSettings: () => { },
+                onSettings: OpenSettings,   // ✅ proper hook
                 onFocusStart: StartFocus,
                 onFocusStop: StopFocus
             );
@@ -222,6 +222,19 @@ namespace FocusTracker.UI
             IdleText.Text =
                 $"Current Streak: {stats.CurrentStreak}";
         }
+
+        private void OpenSettings()
+        {
+            var settingsService = new SettingsService();
+
+            var window = new SettingsWindow(settingsService)
+            {
+                Owner = this
+            };
+
+            window.ShowDialog();
+        }
+
 
         // =========================
         // TRACKING TOGGLE

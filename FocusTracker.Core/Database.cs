@@ -28,13 +28,27 @@ namespace FocusTracker.Core
             var cmd = connection.CreateCommand();
             cmd.CommandText =
             """
-            CREATE TABLE IF NOT EXISTS events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                time TEXT NOT NULL,
-                type TEXT NOT NULL,
-                data TEXT
-            );
-            """;
+    CREATE TABLE IF NOT EXISTS events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        utc_time TEXT NOT NULL,
+        local_date TEXT NOT NULL,
+
+        event_type TEXT NOT NULL,      -- APP_SWITCH | IDLE_START | IDLE_END | INTERRUPT
+
+        app_name TEXT,
+        created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_events_local_date
+    ON events(local_date);
+
+    CREATE INDEX IF NOT EXISTS idx_events_utc_time
+    ON events(utc_time);
+
+    CREATE INDEX IF NOT EXISTS idx_events_type
+    ON events(event_type);
+    """;
 
             cmd.ExecuteNonQuery();
         }
@@ -137,7 +151,7 @@ namespace FocusTracker.Core
         }
 
 
-        public void SaveEvent(string type, string? data)
+        public void SaveAppSwitch(string app)
         {
             using var connection = new SqliteConnection(ConnectionString);
             connection.Open();
@@ -145,15 +159,54 @@ namespace FocusTracker.Core
             var cmd = connection.CreateCommand();
             cmd.CommandText =
             """
-            INSERT INTO events (time, type, data)
-            VALUES ($time, $type, $data);
-            """;
+    INSERT INTO events
+    (utc_time, local_date, event_type, app_name, created_at)
+    VALUES ($utc, $date, 'APP_SWITCH', $app, $now);
+    """;
 
-            cmd.Parameters.AddWithValue("$time", DateTime.UtcNow.ToString("O"));
-            cmd.Parameters.AddWithValue("$type", type);
-            cmd.Parameters.AddWithValue("$data", data ?? "");
+            cmd.Parameters.AddWithValue("$utc", DateTime.UtcNow.ToString("O"));
+            cmd.Parameters.AddWithValue("$date", DateTime.Now.ToString("yyyy-MM-dd"));
+            cmd.Parameters.AddWithValue("$app", app);
+            cmd.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
 
             cmd.ExecuteNonQuery();
         }
+
+        public void SaveIdleStart()
+        {
+            InsertSimpleEvent("IDLE_START");
+        }
+
+        public void SaveIdleEnd()
+        {
+            InsertSimpleEvent("IDLE_END");
+        }
+
+        private void InsertSimpleEvent(string type)
+        {
+            using var connection = new SqliteConnection(ConnectionString);
+            connection.Open();
+
+            var cmd = connection.CreateCommand();
+            cmd.CommandText =
+            """
+    INSERT INTO events
+    (utc_time, local_date, event_type, created_at)
+    VALUES ($utc, $date, $type, $now);
+    """;
+
+            cmd.Parameters.AddWithValue("$utc", DateTime.UtcNow.ToString("O"));
+            cmd.Parameters.AddWithValue("$date", DateTime.Now.ToString("yyyy-MM-dd"));
+            cmd.Parameters.AddWithValue("$type", type);
+            cmd.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+
+            cmd.ExecuteNonQuery();
+        }
+
+        public void SaveInterrupt()
+        {
+            InsertSimpleEvent("INTERRUPT");
+        }
+
     }
 }

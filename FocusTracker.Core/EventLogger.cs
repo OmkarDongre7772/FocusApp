@@ -13,20 +13,23 @@ namespace FocusTracker.Core
 
         public void OnAppChanged(string app)
         {
-            Debug.WriteLine("APP: " + app);
-            _database.SaveEvent("APP_CHANGED", app);
+            _database.SaveAppSwitch(app);
         }
 
         public void OnIdleStarted()
         {
-            Debug.WriteLine("USER IS IDLE");
-            _database.SaveEvent("IDLE_STARTED", null);
+            _database.SaveIdleStart();
         }
 
         public void OnIdleEnded()
         {
-            Debug.WriteLine("USER IS ACTIVE AGAIN");
-            _database.SaveEvent("IDLE_ENDED", null);
+            _database.SaveIdleEnd();
         }
+        public void OnInterrupt()
+        {
+            _database.SaveInterrupt();
+        }
+
     }
+
 }
