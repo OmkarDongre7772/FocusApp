@@ -176,7 +176,13 @@ Service Layer → Activity Tracking → Focus Engine → Database → Analytics 
 ## Application Screenshots
 
 <img width="365" height="328" alt="FocusApp Dashboard" src="https://github.com/user-attachments/assets/72caa3ed-bc52-466a-969a-ea1b967132c2" />
-![WhatsApp Image 2026-02-13 at 10 52 13 PM](https://github.com/user-attachments/assets/539e4c48-dc8e-4dd2-899b-870ecee8ed0c)
-![WhatsApp Image 2026-02-13 at 10 52 13 PM (1)](https://github.com/user-attachments/assets/16af10e5-f1a8-4e10-9984-f2202deabedd)
+
+---
+![Focus Session View](https://github.com/user-attachments/assets/539e4c48-dc8e-4dd2-899b-870ecee8ed0c)
+
+---
+![Analytics Overview](https://github.com/user-attachments/assets/16af10e5-f1a8-4e10-9984-f2202deabedd)
+
+
 
 
