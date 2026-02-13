@@ -38,84 +38,143 @@ A **Windows Focus & Fragmentation Tracker** that runs as a background service an
 * 🧩 **Focus Session Engine** — State machine to manage sessions
 * 📉 **Fragmentation Scoring** — Measures interruptions & switching
 * 💾 **Local Storage** — SQLite database for session logs
-* 📊 **Employee Dashboard** — Personal productivity insights
-* 🏢 **Manager Dashboard** — Team-level aggregated analytics
+* 📊 **Employee Here is your README rewritten in a **clean, professional documentation style** with minimal emojis and consistent naming.
 
 ---
 
-## 🔐 Privacy & Ethics
+# FocusApp — Digital Workplace Wellness Monitor
 
-Signal Pulse is designed as an **ethical productivity tool**, not surveillance software.
+### Focus & Fragmentation Tracker (Privacy-First Productivity Analytics)
 
-**We DO NOT collect:**
+**FocusApp** is a Windows-based background service that monitors work activity patterns to help individuals and organizations improve deep work, reduce distractions, and build healthier digital habits — while preserving user privacy.
 
-* ❌ Screenshots
-* ❌ Keystrokes
-* ❌ Personal content
-* ❌ Website data
-* ❌ Files or messages
-
-**We DO collect:**
-
-* ✅ App usage patterns
-* ✅ Active/idle time
-* ✅ Context switching frequency
-* ✅ Focus session duration
-
-Manager reports are aggregated — no individual spying.
 ---
 
-## 🏗️ System Workflow
+## Vision
+
+To become a trusted productivity intelligence platform that enables healthier work habits, reduced distraction, and data-driven performance improvement without compromising user privacy.
+
+## Mission
+
+To help individuals and organizations improve productivity and deep work through privacy-first focus analytics, fragmentation measurement, and actionable insights.
+
+---
+
+## Key Features
+
+* Works fully offline — no continuous internet connection required
+* Privacy-first approach (no screenshots, keystrokes, or content tracking)
+* Converts distractions into measurable productivity metrics
+* Automatic focus session detection
+* Idle time and break pattern tracking
+* Fragmentation scoring based on context switching
+* Employee productivity dashboard
+* Manager analytics using aggregated data only
+* Lightweight background Windows service
+
+---
+
+## Proposed Solution
+
+FocusApp is a Windows Focus & Fragmentation Tracker that runs as a background service and analyzes user activity patterns.
+
+### Core Components
+
+* **Background Service** — Runs continuously and auto-starts on system boot
+* **Activity Tracking** — Detects active applications and foreground windows
+* **Idle Detection** — Identifies inactivity periods and breaks
+* **Focus Session Engine** — State machine for managing sessions
+* **Fragmentation Scoring** — Measures interruptions and switching frequency
+* **Local Storage** — SQLite database for session logs
+* **Employee Dashboard** — Personal productivity insights
+* **Manager Dashboard** — Team-level aggregated analytics
+
+---
+
+## Privacy and Ethics
+
+FocusApp is designed as an ethical productivity tool, not surveillance software.
+
+### Data Not Collected
+
+* Screenshots
+* Keystrokes
+* Personal content
+* Website browsing data
+* Files or messages
+
+### Data Collected
+
+* Application usage patterns
+* Active and idle time
+* Context switching frequency
+* Focus session duration
+
+Manager reports are aggregated and do not expose individual activity details.
+
+---
+
+## System Workflow
 
 1. Service starts automatically on system boot
-2. Tracks foreground window activity
-3. Detects idle periods
-4. Identifies focus sessions
-5. Calculates fragmentation score
-6. Stores data locally
-7. Generates analytics dashboards
+2. Foreground window activity is monitored
+3. Idle periods are detected
+4. Focus sessions are identified
+5. Fragmentation score is calculated
+6. Data is stored locally
+7. Analytics dashboards are generated
 
 ---
-## ⚙️ Tech Stack
+
+## Technology Stack
 
 ### Core Technologies
 
 * **Language:** C#
 * **Framework:** .NET (Worker Service + WPF UI)
-* **UI:** WPF Charts & Components
+* **UI:** WPF components and charts
 * **Database:** SQLite
 * **System APIs:** Windows Win32 API
-* **Cloud:** Supabase
-* **Security:** Local encrypted settings
+* **Cloud Integration:** Supabase (optional)
+* **Security:** Local encrypted settings storage
 
 ---
 
-## 🧩 Architecture
+## Architecture
 
-Modular architecture with clear separation:
+The system follows a modular architecture with clear separation of concerns:
+
 ```
 Service Layer → Activity Tracking → Focus Engine → Database → Analytics → UI Dashboard
 ```
+
 ---
 
+## Impact and Benefits
 
-## 📈 Impact & Benefits
+### For Employees
 
-### 👤 For Employees
-
-* Increased awareness of distractions
+* Increased awareness of distraction patterns
 * Improved time management
-* Better deep work habits
-* Reduced burnout
+* Stronger deep work habits
+* Reduced burnout risk
 
-### 👥 For Managers
+### For Managers
 
 * Team productivity insights without surveillance
-* Meeting overload detection
+* Detection of meeting overload patterns
 * Improved workload planning
 
-### 🏢 For Organizations
+### For Organizations
 
-* Higher efficiency
+* Higher overall efficiency
 * Healthier work culture
-* Ethical monitoring framework
+* Ethical productivity monitoring framework
+
+---
+
+## Application Screenshots
+
+<img width="365" height="328" alt="FocusApp Dashboard" src="https://github.com/user-attachments/assets/72caa3ed-bc52-466a-969a-ea1b967132c2" />
+![WhatsApp Image 2026-02-13 at 10 52 13 PM](https://github.com/user-attachments/assets/e7c11d25-d149-4896-8415-4c4d191a4a46)
+![WhatsApp Image 2026-02-13 at 10 52 13 PM (1)](https://github.com/user-attachments/assets/7d271808-111e-4160-94d3-1ad32d1f318e)
