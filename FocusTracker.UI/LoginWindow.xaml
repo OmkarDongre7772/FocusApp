@@ -2,168 +2,276 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Account"
-        MinHeight="420"
-        MinWidth="360"
-        Width="420"
-        Height="520"
+        MinHeight="480"
+        MinWidth="400"
+        Width="480"
+        Height="600"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
-        Background="#F3F4F6"
-        FontFamily="Segoe UI">
+        FontFamily="Segoe UI"
+        Background="{DynamicResource BackgroundBrush}">
 
-	<Window.Resources>
+    <Window.Resources>
 
-		<!-- Accent -->
-		<SolidColorBrush x:Key="AccentBrush" Color="#4F46E5"/>
+        <!-- THEME COLORS (matching MainWindow) -->
+        <SolidColorBrush x:Key="BackgroundBrush" Color="#F4F6FB"/>
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="PrimaryTextBrush" Color="#111827"/>
+        <SolidColorBrush x:Key="SecondaryTextBrush" Color="#6B7280"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#2563EB"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#E5E7EB"/>
 
-		<!-- Card -->
-		<Style x:Key="CardStyle" TargetType="Border">
-			<Setter Property="Background" Value="White"/>
-			<Setter Property="CornerRadius" Value="16"/>
-			<Setter Property="Padding" Value="24"/>
-			<Setter Property="Effect">
-				<Setter.Value>
-					<DropShadowEffect BlurRadius="20"
-                                      ShadowDepth="0"
-                                      Opacity="0.12"/>
-				</Setter.Value>
-			</Setter>
-		</Style>
+        <!-- Base Text -->
+        <Style TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
 
-		<!-- Primary Button -->
-		<Style x:Key="PrimaryButton" TargetType="Button">
-			<Setter Property="Background" Value="{StaticResource AccentBrush}"/>
-			<Setter Property="Foreground" Value="White"/>
-			<Setter Property="FontWeight" Value="SemiBold"/>
-			<Setter Property="Padding" Value="10,6"/>
-			<Setter Property="BorderThickness" Value="0"/>
-			<Setter Property="Cursor" Value="Hand"/>
-			<Setter Property="MinHeight" Value="36"/>
-			<Setter Property="Template">
-				<Setter.Value>
-					<ControlTemplate TargetType="Button">
-						<Border Background="{TemplateBinding Background}"
-                                CornerRadius="10">
-							<ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
-						</Border>
-					</ControlTemplate>
-				</Setter.Value>
-			</Setter>
-		</Style>
+        <!-- Header Text -->
+        <Style x:Key="HeaderTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="26"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        </Style>
 
-		<!-- Secondary Button -->
-		<Style x:Key="SecondaryButton" TargetType="Button">
-			<Setter Property="Background" Value="#E5E7EB"/>
-			<Setter Property="Foreground" Value="#111827"/>
-			<Setter Property="FontWeight" Value="SemiBold"/>
-			<Setter Property="Padding" Value="10,6"/>
-			<Setter Property="BorderThickness" Value="0"/>
-			<Setter Property="Cursor" Value="Hand"/>
-			<Setter Property="MinHeight" Value="34"/>
-			<Setter Property="Template">
-				<Setter.Value>
-					<ControlTemplate TargetType="Button">
-						<Border Background="{TemplateBinding Background}"
-                                CornerRadius="10">
-							<ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
-						</Border>
-					</ControlTemplate>
-				</Setter.Value>
-			</Setter>
-		</Style>
+        <!-- Subheader Text -->
+        <Style x:Key="SubheaderTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="LineHeight" Value="20"/>
+        </Style>
 
-		<!-- TextBox -->
-		<Style TargetType="TextBox">
-			<Setter Property="Padding" Value="8"/>
-			<Setter Property="BorderBrush" Value="#D1D5DB"/>
-			<Setter Property="BorderThickness" Value="1"/>
-		</Style>
+        <!-- Label Text -->
+        <Style x:Key="LabelTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
 
-		<!-- PasswordBox -->
-		<Style TargetType="PasswordBox">
-			<Setter Property="Padding" Value="8"/>
-			<Setter Property="BorderBrush" Value="#D1D5DB"/>
-			<Setter Property="BorderThickness" Value="1"/>
-		</Style>
+        <!-- Card Style -->
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Padding" Value="28"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#000000" 
+                                      Opacity="0.04" 
+                                      BlurRadius="20" 
+                                      ShadowDepth="2" 
+                                      Direction="270"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-	</Window.Resources>
+        <!-- Primary Button -->
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="10"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="0.9"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Opacity" Value="0.8"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
 
-	<ScrollViewer VerticalScrollBarVisibility="Auto">
+        <!-- Secondary Button -->
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#F3F4F6"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
 
-		<Grid Margin="28" MaxWidth="600">
+        <!-- TextBox Style -->
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost" 
+                                        Margin="4,0"
+                                        VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-			<Grid.RowDefinitions>
-				<RowDefinition Height="Auto"/>
-				<RowDefinition Height="Auto"/>
-				<RowDefinition Height="*"/>
-			</Grid.RowDefinitions>
+        <!-- PasswordBox Style -->
+        <Style TargetType="PasswordBox">
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost" 
+                                        Margin="4,0"
+                                        VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-			<!-- Header -->
-			<StackPanel Grid.Row="0" Margin="0,0,0,24">
-				<TextBlock Text="Welcome Back"
-                           FontSize="26"
-                           FontWeight="Bold"
-                           Foreground="#111827"/>
+    </Window.Resources>
 
-				<TextBlock Text="Login to sync your focus analytics to the cloud."
-                           Margin="0,6,0,0"
-                           Foreground="#6B7280"
-                           TextWrapping="Wrap"/>
-			</StackPanel>
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
 
-			<!-- Card -->
-			<Border Grid.Row="1"
+        <Grid Margin="32,28,32,32">
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <StackPanel Grid.Row="0" Margin="0,0,0,28">
+                <TextBlock Text="Welcome Back"
+                           Style="{StaticResource HeaderTextStyle}"/>
+
+                <TextBlock Text="Login to sync your focus analytics to the cloud."
+                           Style="{StaticResource SubheaderTextStyle}"
+                           Margin="0,8,0,0"/>
+            </StackPanel>
+
+            <!-- Card -->
+            <Border Grid.Row="1"
                     Style="{StaticResource CardStyle}">
 
-				<StackPanel>
+                <StackPanel>
 
-					<!-- Email -->
-					<StackPanel Margin="0,0,0,16">
-						<TextBlock Text="Email"
-                                   FontWeight="SemiBold"
-                                   Foreground="#374151"/>
-						<TextBox x:Name="EmailBox"
-                                 Margin="0,6,0,0"/>
-					</StackPanel>
+                    <!-- Email -->
+                    <StackPanel Margin="0,0,0,20">
+                        <TextBlock Text="Email"
+                                   Style="{StaticResource LabelTextStyle}"/>
+                        <TextBox x:Name="EmailBox"/>
+                    </StackPanel>
 
-					<!-- Password -->
-					<StackPanel Margin="0,0,0,16">
-						<TextBlock Text="Password"
-                                   FontWeight="SemiBold"
-                                   Foreground="#374151"/>
-						<PasswordBox x:Name="PasswordBox"
-                                     Margin="0,6,0,0"/>
-					</StackPanel>
+                    <!-- Password -->
+                    <StackPanel Margin="0,0,0,20">
+                        <TextBlock Text="Password"
+                                   Style="{StaticResource LabelTextStyle}"/>
+                        <PasswordBox x:Name="PasswordBox"/>
+                    </StackPanel>
 
-					<!-- Team ID -->
-					<StackPanel Margin="0,0,0,20">
-						<TextBlock Text="Team ID (optional)"
-                                   FontWeight="SemiBold"
-                                   Foreground="#374151"/>
-						<TextBox x:Name="TeamBox"
-                                 Margin="0,6,0,0"/>
-					</StackPanel>
+                    <!-- Team ID -->
+                    <StackPanel Margin="0,0,0,28">
+                        <TextBlock Text="Team ID (optional)"
+                                   Style="{StaticResource LabelTextStyle}"/>
+                        <TextBox x:Name="TeamBox"/>
+                    </StackPanel>
 
-					<!-- Buttons -->
-					<StackPanel>
-						<Button Content="Login"
-                                Style="{StaticResource PrimaryButton}"
-                                Margin="0,0,0,10"
+                    <!-- Buttons -->
+                    <StackPanel>
+                        <Button Content="Login"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                Margin="0,0,0,12"
                                 Click="Login_Click"/>
 
-						<Button Content="Create Account"
-                                Style="{StaticResource SecondaryButton}"
+                        <Button Content="Create Account"
+                                Style="{StaticResource SecondaryButtonStyle}"
                                 Click="Register_Click"/>
-					</StackPanel>
+                    </StackPanel>
 
-				</StackPanel>
+                </StackPanel>
 
-			</Border>
+            </Border>
 
-		</Grid>
+        </Grid>
 
-	</ScrollViewer>
+    </ScrollViewer>
 
 </Window>
