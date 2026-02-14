@@ -28,6 +28,11 @@ public class IpcResponse
 
 public class ServiceStatus
 {
+    public bool AnalyticsUpdated { get; set; }
+
+    public string? PendingNudgeTitle { get; set; }
+    public string? PendingNudgeMessage { get; set; }
+
     public bool IsFocusActive { get; set; }
 
     public DateTime? FocusEndsAtUtc { get; set; }

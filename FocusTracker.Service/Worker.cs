@@ -33,6 +33,8 @@ public class Worker : BackgroundService
     private bool _isLoggedIn;
     private DateTime _lastAggregationDate = DateTime.MinValue;
 
+    private AnalyticsNotifier? _analyticsNotifier;
+
     public Worker(
         ILogger<Worker> logger,
         IOptions<FragmentationConfig> fragOptions,
@@ -59,7 +61,8 @@ public class Worker : BackgroundService
         _focusTracker = new FocusSessionTracker(_fragConfig);
         _notificationPolicy = new NotificationPolicy();
         _dailyAggregation = new DailyAggregationService();
-        _userRepo = new LocalUserRepository();
+        _userRepo = new LocalUserRepository(); 
+        _analyticsNotifier = new AnalyticsNotifier();
 
         // ===============================
         // ✅ Notification + Nudge Setup
@@ -75,11 +78,11 @@ public class Worker : BackgroundService
 
         //_notificationService = new NotificationService(_notifyIcon);
 
-        //_nudgeService = new NudgeService(
-        //    _notificationService,
-        //    _notificationPolicy,
-        //    _focusMode,
-        //    _settingsService);
+        _nudgeService = new NudgeService(
+                                notifications: null, // no longer needed
+                                policy: _notificationPolicy,
+                                focusMode: _focusMode,
+                                settings: _settingsService);
 
         _dailyAggregation.RunAggregationForAllMissingDays();
         _lastAggregationDate = DateTime.Now.Date;
@@ -117,7 +120,11 @@ public class Worker : BackgroundService
             _focusTracker.OnFocusStarted(d);
 
         _focusMode.FocusEndedWithResult += completed =>
+        {
             _focusTracker.OnFocusEnded(completed);
+            _analyticsNotifier?.MarkUpdated(); // ✅ NEW
+        };
+
 
         bool isIdle = false;
 
@@ -158,9 +165,13 @@ public class Worker : BackgroundService
         _tracker.Start();
 
         _ipcServer = new IpcServer(
-            _focusMode,
-            _notificationPolicy,
-            _supabaseOptions);
+                    _focusMode,
+                    _notificationPolicy,
+                    _supabaseOptions,
+                    _nudgeService,
+                    _analyticsNotifier);
+
+
 
         _ = _ipcServer.StartAsync(stoppingToken);
 
@@ -190,8 +201,11 @@ public class Worker : BackgroundService
                         _dailyAggregation!
                             .RunAggregationForAllMissingDays();
 
+                        _analyticsNotifier?.MarkUpdated(); // ✅ NEW
+
                         _lastAggregationDate = today;
                     }
+
                 }
 
                 await Task.Delay(1000, stoppingToken);

@@ -5,7 +5,7 @@ namespace FocusTracker.Core
     public class NotificationPolicy
     {
         private const int MaxNotificationsPerHour = 3;
-        private static readonly TimeSpan StartupGracePeriod = TimeSpan.FromMinutes(5);
+        private static readonly TimeSpan StartupGracePeriod = TimeSpan.FromSeconds(5);
 
         private readonly DateTime _appStartTime = DateTime.UtcNow;
         private DateTime _snoozedUntil = DateTime.MinValue;

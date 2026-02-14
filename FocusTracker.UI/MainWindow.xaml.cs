@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Forms;
 using System.Windows.Media;
 using Application = System.Windows.Application;
 using Brushes = System.Windows.Media.Brushes;
@@ -27,11 +28,13 @@ namespace FocusTracker.UI
         {
             InitializeComponent();
 
+            // ✅ FIX: Load dashboard on first startup
+            Loaded += (s, e) => LoadDashboard();
+
             _tray = new TrayManager(
                 onOpen: ShowWindow,
                 onExit: ExitApp,
-                //onSnooze: _ => { },
-                onSettings: OpenSettings,   // ✅ proper hook
+                onSettings: OpenSettings,
                 onFocusStart: StartFocus,
                 onFocusStop: StopFocus
             );
@@ -85,6 +88,18 @@ namespace FocusTracker.UI
 
         private void RenderStatus(ServiceStatus status)
         {
+            if (!string.IsNullOrWhiteSpace(status.PendingNudgeTitle))
+            {
+                _tray.TrayIcon.ShowBalloonTip(
+                    3000,
+                    status.PendingNudgeTitle,
+                    status.PendingNudgeMessage,
+                    ToolTipIcon.Info);
+            }
+            if (status.AnalyticsUpdated)
+            {
+                LoadDashboard();
+            }
             RenderLoginState(status);
             RenderTrackingState(status);
             RenderFocusState(status);
@@ -108,7 +123,6 @@ namespace FocusTracker.UI
                 LoginButton.Content = "Login";
             }
 
-            // ✅ Tracking works in both local and cloud mode
             TrackingToggle.IsEnabled = true;
         }
 
@@ -173,7 +187,11 @@ namespace FocusTracker.UI
         {
             Show();
             Activate();
+            LoadDashboard(); // ✅ also reload when opening from tray
+        }
 
+        private void LoadDashboard()
+        {
             var analytics = new AnalyticsService();
             var summary = analytics.GetTodaySummary();
 
@@ -234,7 +252,6 @@ namespace FocusTracker.UI
 
             window.ShowDialog();
         }
-
 
         // =========================
         // TRACKING TOGGLE

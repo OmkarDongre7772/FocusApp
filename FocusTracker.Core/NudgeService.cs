@@ -38,8 +38,20 @@ namespace FocusTracker.Core
 
         private readonly FocusModeService _focusMode;
 
+        private (string Title, string Message)? _lastNudge;
+
+        public (string Title, string Message)? ConsumeNudge()
+        {
+            var n = _lastNudge;
+            _lastNudge = null;
+            return n;
+        }
+
+
         public void OnAppChanged()
         {
+            Console.WriteLine("App changed event");
+
             var now = DateTime.UtcNow;
 
             _switchTimes.Enqueue(now);
@@ -96,8 +108,13 @@ namespace FocusTracker.Core
 
         private void TryNudge(string ruleId, string title, string message)
         {
-            if (!_settings.Current.NudgesEnabled)
-                return;
+            //if (!_settings.Current.NudgesEnabled)
+            //    return;
+            Console.WriteLine("TRYING NUDGE: " + ruleId);
+            Console.WriteLine("NudgesEnabled: " + _settings.Current.NudgesEnabled);
+            Console.WriteLine("Focus active: " + _focusMode.IsActive);
+            Console.WriteLine("Policy allows: " + _policy.CanNotify(ruleId));
+
 
             if (_focusMode.IsActive)
                 return;
@@ -115,7 +132,7 @@ namespace FocusTracker.Core
 
             _ruleCooldowns[ruleId] = now;
             _policy.RecordNotification();
-            _notifications.Show(title, message);
+            _lastNudge = (title, message);
         }
     }
 }

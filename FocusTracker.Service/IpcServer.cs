@@ -13,20 +13,28 @@ namespace FocusTracker.Service;
 public class IpcServer
 {
     private const string PipeName = @"Global\FocusTrackerPipe";
+    private readonly AnalyticsNotifier? _analyticsNotifier;
 
     private readonly FocusModeService _focusMode;
     private readonly NotificationPolicy _notificationPolicy;
     private readonly SupabaseOptions _supabaseOptions;
+    private readonly NudgeService? _nudgeService;
 
     public IpcServer(
-        FocusModeService focusMode,
-        NotificationPolicy notificationPolicy,
-        SupabaseOptions supabaseOptions)
+    FocusModeService focusMode,
+    NotificationPolicy notificationPolicy,
+    SupabaseOptions supabaseOptions,
+    NudgeService? nudgeService,
+    AnalyticsNotifier? analyticsNotifier)
     {
         _focusMode = focusMode;
         _notificationPolicy = notificationPolicy;
         _supabaseOptions = supabaseOptions;
+        _nudgeService = nudgeService;
+        _analyticsNotifier = analyticsNotifier;
     }
+
+
 
     public Task StartAsync(CancellationToken token)
     {
@@ -238,9 +246,15 @@ public class IpcServer
     }
 
     private ServiceStatus GetStatus()
-    {
+    {   
         var repo = new LocalUserRepository();
         var user = repo.Get();
+        var nudge = _nudgeService?.ConsumeNudge();
+        if (nudge != null)
+        {
+            Debug.WriteLine("NUDGE SENT TO UI: " + nudge.Value.Title);
+        }
+
 
         return new ServiceStatus
         {
@@ -250,7 +264,12 @@ public class IpcServer
             TrackingEnabled = user.TrackingEnabled,
             IsLoggedIn = user.Username != null,
             Username = user.Username,
-            TeamId = user.TeamId
+            TeamId = user.TeamId,
+            PendingNudgeTitle = nudge?.Title,
+            PendingNudgeMessage = nudge?.Message,
+            AnalyticsUpdated = _analyticsNotifier?.ConsumeFlag() ?? false // ✅ NEW
         };
+
+
     }
 }
