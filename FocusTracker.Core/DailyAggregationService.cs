@@ -299,7 +299,7 @@ namespace FocusTracker.Core
         private class EventRow
         {
             public DateTime UtcTime { get; set; }
-            public string EventType { get; set; }
+            public string? EventType { get; set; }
             public string? AppName { get; set; }
         }
 

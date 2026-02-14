@@ -9,7 +9,7 @@ namespace FocusTracker.UI;
 
 public class IpcClient
 {
-    private const string PipeName = "FocusTrackerPipe";
+    private const string PipeName = @"Global\FocusTrackerPipe";
 
     public async Task<IpcResponse?> SendAsync(IpcRequest request)
     {

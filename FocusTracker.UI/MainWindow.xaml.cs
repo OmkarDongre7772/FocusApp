@@ -30,7 +30,7 @@ namespace FocusTracker.UI
             _tray = new TrayManager(
                 onOpen: ShowWindow,
                 onExit: ExitApp,
-                onSnooze: _ => { },
+                //onSnooze: _ => { },
                 onSettings: OpenSettings,   // ✅ proper hook
                 onFocusStart: StartFocus,
                 onFocusStop: StopFocus
@@ -186,7 +186,7 @@ namespace FocusTracker.UI
             LongestFocusText.Text =
                 $"Longest Session: {summary.LongestFocusMinutes:F1} minutes";
 
-            var weekly = analytics.GetLast7Days();
+            var weekly = AnalyticsService.GetLast7Days();
 
             if (weekly.Days.Count > 0)
             {

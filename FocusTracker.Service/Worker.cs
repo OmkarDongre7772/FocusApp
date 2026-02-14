@@ -2,8 +2,6 @@ using FocusTracker.Core;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Windows.Forms;
-using System.Drawing;
 
 namespace FocusTracker.Service;
 
@@ -25,9 +23,9 @@ public class Worker : BackgroundService
     private LocalUserRepository? _userRepo;
     private CloudSyncService? _cloudSync;
 
-    // ✅ NEW (no functional interference)
-    private NotifyIcon? _notifyIcon;
-    private NotificationService? _notificationService;
+    // //✅ NEW (no functional interference)
+    //private NotifyIcon? _notifyIcon;
+    //private NotificationService? _notificationService;
     private NudgeService? _nudgeService;
     private SettingsService? _settingsService;
 
@@ -68,20 +66,20 @@ public class Worker : BackgroundService
         // ===============================
         _settingsService = new SettingsService();
 
-        _notifyIcon = new NotifyIcon
-        {
-            Visible = true,
-            Icon = SystemIcons.Information,
-            Text = "FocusTracker"
-        };
+        //_notifyIcon = new NotifyIcon
+        //{
+        //    Visible = true,
+        //    Icon = SystemIcons.Information,
+        //    Text = "FocusTracker"
+        //};
 
-        _notificationService = new NotificationService(_notifyIcon);
+        //_notificationService = new NotificationService(_notifyIcon);
 
-        _nudgeService = new NudgeService(
-            _notificationService,
-            _notificationPolicy,
-            _focusMode,
-            _settingsService);
+        //_nudgeService = new NudgeService(
+        //    _notificationService,
+        //    _notificationPolicy,
+        //    _focusMode,
+        //    _settingsService);
 
         _dailyAggregation.RunAggregationForAllMissingDays();
         _lastAggregationDate = DateTime.Now.Date;
@@ -233,14 +231,14 @@ public class Worker : BackgroundService
         }
 
         // ✅ Proper tray disposal on shutdown
-        stoppingToken.Register(() =>
-        {
-            if (_notifyIcon != null)
-            {
-                _notifyIcon.Visible = false;
-                _notifyIcon.Dispose();
-            }
-        });
+        //stoppingToken.Register(() =>
+        //{
+        //    if (_notifyIcon != null)
+        //    {
+        //        _notifyIcon.Visible = false;
+        //        _notifyIcon.Dispose();
+        //    }
+        //});
 
         await Task.Delay(Timeout.Infinite, stoppingToken);
     }

@@ -2,59 +2,150 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Settings"
-        Height="320"
-        Width="380"
+        MinHeight="380"
+        MinWidth="360"
+        Width="420"
+        Height="520"
         WindowStartupLocation="CenterOwner"
-        ResizeMode="NoResize">
+        ResizeMode="CanResize"
+        Background="#F3F4F6"
+        FontFamily="Segoe UI">
 
-    <Grid Margin="20">
+    <Window.Resources>
 
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+        <!-- Accent -->
+        <SolidColorBrush x:Key="AccentBrush" Color="#4F46E5"/>
 
-        <!-- Notifications -->
-        <CheckBox
-            x:Name="NudgesCheckBox"
-            Content="Enable Notifications"
-            FontWeight="SemiBold"
-            Grid.Row="0"
-            Margin="0,0,0,15"/>
+        <!-- Card -->
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="0,0,0,18"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="20"
+                                      ShadowDepth="0"
+                                      Opacity="0.12"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-        <!-- Sensitivity -->
-        <StackPanel Grid.Row="1" Margin="0,0,0,10">
-            <TextBlock Text="Fragmentation Sensitivity"/>
-            <ComboBox x:Name="SensitivityCombo" Margin="0,5,0,0">
-                <ComboBoxItem Content="Strict"/>
-                <ComboBoxItem Content="Balanced"/>
-                <ComboBoxItem Content="Relaxed"/>
-            </ComboBox>
-        </StackPanel>
+        <!-- Button -->
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="MinWidth" Value="90"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-        <!-- Focus Praise -->
-        <StackPanel Grid.Row="2" Margin="0,0,0,10">
-            <TextBlock Text="Focus praise after (minutes)"/>
-            <TextBox x:Name="FocusMinutesBox" Margin="0,5,0,0"/>
-        </StackPanel>
+        <!-- TextBox -->
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
 
-        <!-- Max Notifications -->
-        <StackPanel Grid.Row="3" Margin="0,0,0,10">
-            <TextBlock Text="Max notifications per hour"/>
-            <TextBox x:Name="MaxNotifBox" Margin="0,5,0,0"/>
-        </StackPanel>
+        <!-- ComboBox -->
+        <Style TargetType="ComboBox">
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
 
-        <!-- Save Button -->
-        <Button
-            Grid.Row="5"
-            Content="Save"
-            Width="100"
-            Height="32"
-            HorizontalAlignment="Center"
-            Click="Save_Click"/>
-    </Grid>
+    </Window.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+
+        <Grid Margin="24" MaxWidth="700">
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <TextBlock Grid.Row="0"
+                       Text="Settings"
+                       FontSize="26"
+                       FontWeight="Bold"
+                       Foreground="#111827"
+                       Margin="0,0,0,20"/>
+
+            <!-- Settings Card -->
+            <Border Grid.Row="1"
+                    Style="{StaticResource CardStyle}">
+
+                <StackPanel>
+
+                    <!-- Notifications -->
+                    <CheckBox x:Name="NudgesCheckBox"
+                              Content="Enable Notifications"
+                              FontWeight="SemiBold"
+                              Margin="0,0,0,20"/>
+
+                    <!-- Sensitivity -->
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Text="Fragmentation Sensitivity"
+                                   FontWeight="SemiBold"
+                                   Foreground="#374151"/>
+                        <ComboBox x:Name="SensitivityCombo"
+                                  Margin="0,6,0,0">
+                            <ComboBoxItem Content="Strict"/>
+                            <ComboBoxItem Content="Balanced"/>
+                            <ComboBoxItem Content="Relaxed"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <!-- Focus Praise -->
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Text="Focus praise after (minutes)"
+                                   FontWeight="SemiBold"
+                                   Foreground="#374151"/>
+                        <TextBox x:Name="FocusMinutesBox"
+                                 Margin="0,6,0,0"/>
+                    </StackPanel>
+
+                    <!-- Max Notifications -->
+                    <StackPanel Margin="0,0,0,8">
+                        <TextBlock Text="Max notifications per hour"
+                                   FontWeight="SemiBold"
+                                   Foreground="#374151"/>
+                        <TextBox x:Name="MaxNotifBox"
+                                 Margin="0,6,0,0"/>
+                    </StackPanel>
+
+                </StackPanel>
+            </Border>
+
+            <!-- Save Button -->
+            <StackPanel Grid.Row="2"
+                        HorizontalAlignment="Center"
+                        Margin="0,10,0,0">
+
+                <Button Content="Save Changes"
+                        Height="36"
+                        Click="Save_Click"/>
+            </StackPanel>
+
+        </Grid>
+    </ScrollViewer>
+
 </Window>

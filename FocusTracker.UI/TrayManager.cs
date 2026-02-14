@@ -13,7 +13,7 @@ namespace FocusTracker.UI
         public TrayManager(
             Action onOpen,
             Action onExit,
-            Action<TimeSpan> onSnooze,
+            //Action<TimeSpan> onSnooze,
             Action onSettings,
             Action<TimeSpan> onFocusStart,
             Action onFocusStop)
@@ -21,7 +21,12 @@ namespace FocusTracker.UI
         {
             TrayIcon = new NotifyIcon
             {
-                Icon = System.Drawing.SystemIcons.Application,
+                Icon = new System.Drawing.Icon(
+                            System.IO.Path.Combine(
+                                AppDomain.CurrentDomain.BaseDirectory,
+                                "Assets",
+                                "FocusTrackerLogo.ico")),
+
                 Text = "FocusTracker",
                 Visible = true
             };
@@ -49,16 +54,16 @@ namespace FocusTracker.UI
 
             menu.Items.Add(new ToolStripSeparator());
 
-            menu.Items.Add("Snooze 15 min", null,
-                (s, e) => onSnooze(TimeSpan.FromMinutes(15)));
+            //menu.Items.Add("Snooze 15 min", null,
+            //    (s, e) => onSnooze(TimeSpan.FromMinutes(15)));
 
-            menu.Items.Add("Snooze 30 min", null,
-                (s, e) => onSnooze(TimeSpan.FromMinutes(30)));
+            //menu.Items.Add("Snooze 30 min", null,
+            //    (s, e) => onSnooze(TimeSpan.FromMinutes(30)));
 
-            menu.Items.Add("Snooze 1 hour", null,
-                (s, e) => onSnooze(TimeSpan.FromHours(1)));
+            //menu.Items.Add("Snooze 1 hour", null,
+            //    (s, e) => onSnooze(TimeSpan.FromHours(1)));
 
-            menu.Items.Add(new ToolStripSeparator());
+            //menu.Items.Add(new ToolStripSeparator());
 
 
             menu.Items.Add("Exit", null, (s, e) => onExit());

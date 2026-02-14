@@ -1,14 +1,18 @@
 ﻿using FocusTracker.Core;
 using System.Diagnostics;
 using System.IO.Pipes;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
+
+//using System.IO.Pipes.AccessControl;
 
 namespace FocusTracker.Service;
 
 public class IpcServer
 {
-    private const string PipeName = "FocusTrackerPipe";
+    private const string PipeName = @"Global\FocusTrackerPipe";
 
     private readonly FocusModeService _focusMode;
     private readonly NotificationPolicy _notificationPolicy;
@@ -24,14 +28,37 @@ public class IpcServer
         _supabaseOptions = supabaseOptions;
     }
 
-
     public Task StartAsync(CancellationToken token)
     {
         Console.WriteLine("IPC Server starting...");
         return Task.Run(() => ListenLoop(token), token);
     }
 
+    // ✅ NEW: Secure pipe creation (Windows Service compatible)
+    private NamedPipeServerStream CreateSecurePipe()
+    {
+        var pipeSecurity = new PipeSecurity();
 
+        pipeSecurity.AddAccessRule(new PipeAccessRule(
+            new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null),
+            PipeAccessRights.FullControl,
+            AccessControlType.Allow));
+
+        pipeSecurity.AddAccessRule(new PipeAccessRule(
+            new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null),
+            PipeAccessRights.ReadWrite,
+            AccessControlType.Allow));
+
+        return NamedPipeServerStreamAcl.Create(
+            @"Global\FocusTrackerPipe",
+            PipeDirection.InOut,
+            NamedPipeServerStream.MaxAllowedServerInstances,
+            PipeTransmissionMode.Message,
+            PipeOptions.Asynchronous,
+            4096,
+            4096,
+            pipeSecurity);
+    }
 
     private async Task ListenLoop(CancellationToken token)
     {
@@ -43,16 +70,12 @@ public class IpcServer
 
             try
             {
-                server = new NamedPipeServerStream(
-                    PipeName,
-                    PipeDirection.InOut,
-                    NamedPipeServerStream.MaxAllowedServerInstances,
-                    PipeTransmissionMode.Message,
-                    PipeOptions.Asynchronous);
+                // ✅ REPLACED with secure pipe
+                server = CreateSecurePipe();
 
-                System.Diagnostics.Debug.WriteLine("Waiting for IPC connection...");
+                Debug.WriteLine("Waiting for IPC connection...");
                 await server.WaitForConnectionAsync(token);
-                System.Diagnostics.Debug.WriteLine("IPC client connected.");
+                Debug.WriteLine("IPC client connected.");
 
                 using var ms = new MemoryStream();
                 var buffer = new byte[4096];
@@ -67,37 +90,27 @@ public class IpcServer
 
                 var requestJson = Encoding.UTF8.GetString(ms.ToArray());
 
-
-
-                System.Diagnostics.Debug.WriteLine("Received JSON: " + requestJson);
-
                 if (string.IsNullOrWhiteSpace(requestJson))
                 {
-                    System.Diagnostics.Debug.WriteLine("Empty request.");
                     continue;
                 }
 
-                System.Diagnostics.Debug.WriteLine("Deserializing...");
                 var request = JsonSerializer.Deserialize<IpcRequest>(requestJson);
 
-                System.Diagnostics.Debug.WriteLine("Handling request...");
                 var response = await HandleRequest(request);
 
-                System.Diagnostics.Debug.WriteLine("Serializing response...");
                 var responseJson = JsonSerializer.Serialize(response);
 
-                System.Diagnostics.Debug.WriteLine("Sending response...");
                 var responseWithNewLine = responseJson + "\n";
                 var responseBytes = Encoding.UTF8.GetBytes(responseWithNewLine);
                 await server.WriteAsync(responseBytes, 0, responseBytes.Length, token);
                 await server.FlushAsync(token);
 
-
-                System.Diagnostics.Debug.WriteLine("Response sent.");
+                Debug.WriteLine("Response sent.");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("IPC CRASH: " + ex);
+                Debug.WriteLine("IPC CRASH: " + ex);
             }
             finally
             {
@@ -110,10 +123,8 @@ public class IpcServer
             }
         }
 
-        System.Diagnostics.Debug.WriteLine("IPC loop exited safely.");
+        Debug.WriteLine("IPC loop exited safely.");
     }
-
-
 
     private async Task<IpcResponse> HandleRequest(IpcRequest? request)
     {
@@ -129,7 +140,6 @@ public class IpcServer
                     return new IpcResponse { Success = false, Message = "Missing duration" };
 
                 _focusMode.Start(TimeSpan.FromMinutes(request.DurationMinutes.Value));
-
                 return Success("Focus started");
 
             case "StopFocus":
@@ -148,7 +158,6 @@ public class IpcServer
                     : "Tracking disabled");
 
             case "Login":
-                Debug.WriteLine("Server Request =>" + request);
                 if (string.IsNullOrWhiteSpace(request.Username) ||
                     string.IsNullOrWhiteSpace(request.Password))
                     return Fail("Email and password required");
@@ -160,7 +169,7 @@ public class IpcServer
                 var result = await authClient.LoginAsync(
                     request.Username.Trim(),
                     request.Password.Trim());
-                Debug.WriteLine("Server Result =>" + result);
+
                 if (result == null)
                     return Fail("Invalid credentials");
 
@@ -175,7 +184,6 @@ public class IpcServer
                 return Success("Login successful");
 
             case "Register":
-                Debug.WriteLine("Server Request =>" + request);
                 if (string.IsNullOrWhiteSpace(request.Username) ||
                     string.IsNullOrWhiteSpace(request.Password))
                     return Fail("Email and password required");
@@ -187,11 +195,10 @@ public class IpcServer
                 var registerResult = await registerClient.RegisterAsync(
                     request.Username.Trim(),
                     request.Password.Trim());
-                Debug.WriteLine("Server Result =>" + registerResult);
+
                 if (registerResult == null)
                     return Fail("Registration failed");
 
-                // Auto-login immediately
                 repo.SaveAuth(
                     registerResult.UserId,
                     registerResult.UserEmail,
@@ -201,8 +208,6 @@ public class IpcServer
                     DateTime.UtcNow.AddSeconds(registerResult.ExpiresIn));
 
                 return Success("Registration successful");
-
-
 
             case "Logout":
                 _focusMode.Stop(false);
@@ -248,5 +253,4 @@ public class IpcServer
             TeamId = user.TeamId
         };
     }
-
 }

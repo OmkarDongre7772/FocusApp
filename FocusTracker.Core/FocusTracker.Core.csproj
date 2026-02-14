@@ -6,16 +6,13 @@
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <OutputType>Library</OutputType>
-    <ApplicationIcon>favicon.ico</ApplicationIcon>
 	  <UseWindowsForms>true</UseWindowsForms>
+	  <PackageIcon></PackageIcon>
+	  <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Remove="FragmentationAnalyzer.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="favicon.ico" />
   </ItemGroup>
 
   <ItemGroup>

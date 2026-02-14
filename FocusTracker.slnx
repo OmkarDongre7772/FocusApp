@@ -1,5 +1,15 @@
 <Solution>
-  <Project Path="FocusTracker.Core/FocusTracker.Core.csproj" />
-  <Project Path="FocusTracker.Service/FocusTracker.Service.csproj" />
-  <Project Path="FocusTracker.UI/FocusTracker.UI.csproj" />
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="FocusTracker.Core/FocusTracker.Core.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="FocusTracker.Service/FocusTracker.Service.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="FocusTracker.UI/FocusTracker.UI.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
 </Solution>

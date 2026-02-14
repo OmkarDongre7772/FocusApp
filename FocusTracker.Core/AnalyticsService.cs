@@ -7,7 +7,7 @@ namespace FocusTracker.Core
     public class AnalyticsService
     {
         private static readonly string ConnectionString = $"Data Source={DatabasePaths.GetDatabasePath()};Cache=Shared";
-        private static readonly TimeSpan MinFocusDuration = TimeSpan.FromMinutes(2);
+        private static readonly TimeSpan MinFocusDuration = TimeSpan.FromMinutes(1);
 
         public TodaySummary GetTodaySummary()
         {
@@ -77,7 +77,7 @@ namespace FocusTracker.Core
             return list;
         }
 
-        public WeeklySummary GetLast7Days()
+        public static WeeklySummary GetLast7Days()
         {
             using var conn = new SqliteConnection(ConnectionString);
             conn.Open();
@@ -115,7 +115,7 @@ namespace FocusTracker.Core
         private class EventRow
         {
             public DateTime Time { get; set; }
-            public string Type { get; set; }
+            public string? Type { get; set; }
         }
     }
 
@@ -132,7 +132,7 @@ namespace FocusTracker.Core
 
     public class DailyRow
     {
-        public string Date { get; set; }
+        public string? Date { get; set; }
         public double FocusMinutes { get; set; }
         public int FocusSessions { get; set; }
         public int FragmentationScore { get; set; }
